@@ -2,7 +2,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { baseSepolia } from "viem/chains";
+import { abstractTestnet } from "viem/chains";
 import { SmartAccountProvider } from "../hooks/SmartAccountContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -46,7 +46,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       </Head>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-
+        clientId='client-WY5amHUxxFHMHHMmPJvBQgGPJQ1WuMFjP57qUmHcbu4g2'
         config={{
           loginMethods: ["email", "google"],
           appearance: {
@@ -58,7 +58,8 @@ function MyApp({ Component, pageProps }: AppProps) {
             noPromptOnSignature: true,
           },
           // @ts-ignore
-          defaultChain: baseSepolia,
+          defaultChain: abstractTestnet,
+          supportedChains: [abstractTestnet]
         }}
       >
         <SmartAccountProvider>

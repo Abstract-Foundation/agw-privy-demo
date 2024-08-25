@@ -3,12 +3,12 @@ import React, { useEffect, useState } from "react";
 import { useLinkWithSiwe, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { BASE_SEPOLIA_SCAN_URL, NFT_ADDRESS } from "../lib/constants";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS } from "../lib/constants";
 import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import { baseSepolia } from "viem/chains";
+import { abstractTestnet } from "viem/chains";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function DashboardPage() {
     try {
       const transactionHash = await smartAccountClient.sendTransaction({
         account: smartAccountClient.account!,
-        chain: baseSepolia,
+        chain: abstractTestnet,
         to: NFT_ADDRESS,
         data: encodeFunctionData({
           abi: ABI,
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
       toast.update(toastId, {
         render: (
-          <Alert href={`${BASE_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
+          <Alert href={`${ABS_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
             Successfully minted! Click here to see your transaction.
           </Alert>
         ),
@@ -83,7 +83,7 @@ export default function DashboardPage() {
   const onLink = async () => {
       // The link button is disabled if either of these are undefined
       if (!smartAccountClient || !smartAccountAddress) return;
-      const chainId = `eip155:${baseSepolia.id}`;
+      const chainId = `eip155:${abstractTestnet.id}`;
 
       const message = await generateSiweMessage({
         address: smartAccountAddress,
@@ -104,7 +104,7 @@ export default function DashboardPage() {
   return (
     <>
       <Head>
-        <title>Privy x Permissionless Demo</title>
+        <title>Privy x AGW Demo</title>
       </Head>
 
       <main className="flex flex-col min-h-screen px-4 sm:px-20 py-6 sm:py-10 bg-privy-light-blue">
@@ -113,7 +113,7 @@ export default function DashboardPage() {
             <ToastContainer />
             <div className="flex flex-row justify-between">
               <h1 className="text-2xl font-semibold">
-                Privy x Permissionless Demo
+                Privy x AGW Demo
               </h1>
               <button
                 onClick={logout}
@@ -143,7 +143,7 @@ export default function DashboardPage() {
             </p>
             <a
               className="mt-2 text-sm text-gray-500 hover:text-violet-600"
-              href={`${BASE_SEPOLIA_SCAN_URL}/address/${smartAccountAddress}#tokentxnsErc721`}
+              href={`${ABS_SEPOLIA_SCAN_URL}/address/${smartAccountAddress}`}
             >
               {smartAccountAddress}
             </a>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
             </p>
             <a
               className="mt-2 text-sm text-gray-500 hover:text-violet-600"
-              href={`${BASE_SEPOLIA_SCAN_URL}/address/${eoa?.address}`}
+              href={`${ABS_SEPOLIA_SCAN_URL}/address/${eoa?.address}`}
             >
               {eoa?.address}
             </a>
