@@ -1,22 +1,46 @@
-import { createPublicClient, http, encodeFunctionData, Hex, WalletClient, CustomTransport, Chain, Account } from 'viem'
+import { createPublicClient, http, encodeFunctionData, Hex, WalletClient, CustomTransport, Chain, Account, toBytes, keccak256 } from 'viem'
 import { abstractTestnet } from 'viem/chains'
-
-import { ConnectedWallet } from "@privy-io/react-auth";
 import ABI from "../lib/AccountFactory.json";
 
 // Environment variables
 const FACTORY_ADDRESS = '0x88219cF9438e6fFF5ffA9812CEf4F433E2f2f4A6'
 const EOA_VALIDATOR_ADDRESS = '0xC23a31018bf14bEFC9d7C209d6B4646C3EFC4138'
 
-export async function deployAccount(privyClient:  WalletClient<CustomTransport, Chain, Account>): Promise<`0x${string}`> {
-  // Create clients
-  const publicClient = createPublicClient({
-    chain: abstractTestnet,
-    transport: http()
-  })
+const publicClient = createPublicClient({
+  chain: abstractTestnet,
+  transport: http()
+})
 
-  // Generate random salt
-  const salt = `0x${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex')}` as `0x${string}`
+async function addressHasCode(address: `0x${string}`): Promise<boolean> {
+  try {
+    const bytecode = await publicClient.getCode({
+      address: address
+    })
+    return bytecode !== null && bytecode !== '0x' && bytecode !== undefined
+  } catch (error) {
+    console.error('Error checking address:', error)
+    return false
+  }
+}
+
+export async function deployAccount(privyClient:  WalletClient<CustomTransport, Chain, Account>): Promise<`0x${string}`> {
+  // Generate salt based off address
+  const addressBytes = toBytes(privyClient.account.address);
+  const salt = keccak256(addressBytes);
+
+  // Get the deployed account address
+  const accountAddress = await publicClient.readContract({
+    address: FACTORY_ADDRESS,
+    abi: ABI,
+    functionName: 'getAddressForSalt',
+    args: [salt],
+  }) as `0x${string}`;
+
+  // No need to deploy if the account already exists
+  const accountExists = await addressHasCode(accountAddress);
+  if (accountExists) {
+    return accountAddress;
+  }
 
   // Define the call struct
   const call = {
@@ -67,16 +91,6 @@ export async function deployAccount(privyClient:  WalletClient<CustomTransport, 
   })
 
   // Wait for the transaction to be mined
-  const receipt = await publicClient.waitForTransactionReceipt({ hash })
-
-  // Get the deployed account address
-  const accountAddress = await publicClient.readContract({
-    address: FACTORY_ADDRESS,
-    abi: ABI,
-    functionName: 'getAddressForSalt',
-    args: [salt],
-  })
-
-  console.log('Deployed account address:', accountAddress)
+  await publicClient.waitForTransactionReceipt({ hash })
   return accountAddress as `0x${string}`;
 }
