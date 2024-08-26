@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useContext } from "react";
-import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { Account, Chain, createWalletClient, custom, CustomTransport, WalletClient } from "viem";
-import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions, } from 'viem/zksync'
+import { ConnectedWallet, useWallets } from "@privy-io/react-auth";
 import { deployAccount } from '../lib/deployAccount';
+import { createSmartContractAccount, createSmartContractWalletClient, SmartContractClient } from "../lib/createWalletClientWithAccount";
+import { ZksyncSmartAccount } from "viem/zksync";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
   /** Privy embedded wallet, used as a signer for the smart account */
   eoa: ConnectedWallet | undefined;
+  /** Smart account instance */
+  smartAccount: ZksyncSmartAccount | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
-  smartAccountClient:
-    | WalletClient<CustomTransport, Chain, Account>
-    | undefined;
+  smartAccountClient: SmartContractClient |  undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
   /** Boolean to indicate whether the smart account state has initialized */
@@ -21,6 +20,7 @@ interface SmartAccountInterface {
 
 const SmartAccountContext = React.createContext<SmartAccountInterface>({
   eoa: undefined,
+  smartAccount: undefined,
   smartAccountClient: undefined,
   smartAccountAddress: undefined,
   smartAccountReady: false,
@@ -37,44 +37,37 @@ export const SmartAccountProvider = ({
 }) => {
   // Get a list of all of the wallets (EOAs) the user has connected to your site
   const { wallets } = useWallets();
-  const {ready} = usePrivy();
   // Find the embedded wallet by finding the entry in the list with a `walletClientType` of 'privy'
   const embeddedWallet = wallets.find(
     (wallet) => wallet.walletClientType === "privy"
   );
 
   // States to store the smart account and its status
-  const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
-  const [smartAccountClient, setSmartAccountClient] = useState<
-    | WalletClient<CustomTransport, Chain, Account>
-    | undefined
-  >();
+  const [eoa, setEoa] = useState<ConnectedWallet>();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
     `0x${string}` | undefined
   >();
+  const [smartAccount, setSmartAccount] = useState<ZksyncSmartAccount>();
+  const [smartAccountClient, setSmartAccountClient] = useState<SmartContractClient>();
   const [smartAccountReady, setSmartAccountReady] = useState(false);
 
   useEffect(() => {
-    if (!ready) return;
-  }, [ready, embeddedWallet]);
+    // Deploy a smart contract wallet from the Privy EOA (sponsored by paymaster)
+    const createSmartWallet = async (connectedEoa: ConnectedWallet) => {
+      // What EOA is the signer for the smart account
+      setEoa(connectedEoa); 
 
-  useEffect(() => {
-    // Creates a smart account given a Privy `ConnectedWallet` object representing
-    // the  user's EOA.
-    const createSmartWallet = async (eoa: ConnectedWallet) => {
-      setEoa(eoa);
+      // Deploy a smart contract account from that EOA
+      const scAccountAddress = await deployAccount(connectedEoa);
 
-      const eip1193provider = await eoa.getEthereumProvider();
-      const smartAccountClient = createWalletClient({
-        account: eoa.address as `0x${string}`,
-        chain: abstractTestnet,
-        transport: custom(eip1193provider),
-      }).extend(eip712WalletActions());
+      // Once deployed, setup a Viem client with the smart account which uses the EOA to sign
+      const scAccount = createSmartContractAccount(scAccountAddress, connectedEoa);
+      const scAccountClient = createSmartContractWalletClient(scAccount);
 
-      const smartAccountAddress = await deployAccount(smartAccountClient);
-
-      setSmartAccountClient(smartAccountClient);
-      setSmartAccountAddress(smartAccountAddress);
+      // Set the smart account state
+      setSmartAccount(scAccount);
+      setSmartAccountClient(scAccountClient);
+      setSmartAccountAddress(scAccountAddress);
       setSmartAccountReady(true);
     };
 
@@ -84,10 +77,11 @@ export const SmartAccountProvider = ({
   return (
     <SmartAccountContext.Provider
       value={{
+        eoa: eoa,
+        smartAccount: smartAccount,
         smartAccountReady: smartAccountReady,
         smartAccountClient: smartAccountClient,
         smartAccountAddress: smartAccountAddress,
-        eoa: eoa,
       }}
     >
       {children}

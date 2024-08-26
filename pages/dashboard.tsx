@@ -1,22 +1,20 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
-import { /*useLinkWithSiwe,*/ usePrivy } from "@privy-io/react-auth";
+import { /*useLinkWithSiwe,*/ usePrivy, useWallets } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
-import { encodeFunctionData, Hex } from "viem";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import { createPublicClient, http, encodeAbiParameters, parseAbiParameters } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { getGeneralPaymasterInput } from "viem/zksync";
-import { serializeEip712 } from "zksync-ethers/build/utils";
-import { EIP712Signer, utils, types } from 'zksync-ethers';
+import { createEoaWalletClient } from "../lib/createWalletClientWithAccount";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout, signMessage } = usePrivy();
+  const {wallets} = useWallets();
+  const { ready, authenticated, user, logout , signMessage } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
@@ -36,80 +34,27 @@ export default function DashboardPage() {
     buttonText: 'Mint NFT',
   };
 
-  const publicClient = createPublicClient({
-    chain: abstractTestnet,
-    transport: http()
-  })
-
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
-    if (!smartAccountClient || !smartAccountAddress) return;
+    if (!smartAccountClient || !smartAccountAddress || !eoa) return;
 
     // Store a state to disable the mint button while mint is in progress
     setIsMinting(true);
     const toastId = toast.loading("Minting...");
 
     try {
-      const mintData = encodeFunctionData({
+      const transactionHash = await (await createEoaWalletClient(eoa)).writeContract({
+        account: smartAccountAddress,
         abi: ABI,
         functionName: "mint",
-        args: [smartAccountAddress, 1]
-      })
-
-      const nonce = await publicClient.getTransactionCount({
-        address: smartAccountAddress
+        address: NFT_ADDRESS,
+        chain: abstractTestnet,
+        args: [smartAccountAddress, 1],
+        paymaster: NFT_PAYMASTER_ADDRESS,
+        paymasterInput: getGeneralPaymasterInput({
+          innerInput: "0x",
+        }),
       });
-      const gasPrice = await publicClient.getGasPrice()
-      const gasLimit = await publicClient.estimateGas({
-        account: smartAccountAddress,
-        to: NFT_ADDRESS,
-        data: mintData,
-      })
-
-      const paymasterInput = getGeneralPaymasterInput({
-        innerInput: '0x',
-      });
-
-      const tx = {
-        from: smartAccountAddress,
-        to: NFT_ADDRESS,
-        data: mintData,
-        nonce: nonce,
-        gasLimit: gasLimit.toString(),
-        gasPrice: gasPrice.toString(),
-        chainId: abstractTestnet.id,
-        value: 0,
-        type: 113,
-        customData: {
-          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
-          paymasterParams: {
-            paymaster: NFT_PAYMASTER_ADDRESS,
-            paymasterInput: paymasterInput,
-          }
-        } as types.Eip712Meta,
-      };
-      const signedTxHash = EIP712Signer.getSignedDigest(tx);
-
-      // const rawSignature = await smartAccountClient.signMessage({
-      //   message: { raw: signedTxHash as Hex },
-      // });
-
-      const rawSignature = await signMessage(signedTxHash as Hex, uiConfig);
-
-      const signature = encodeAbiParameters(
-        parseAbiParameters(['bytes', 'address', 'bytes[]']),
-        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
-      );
-
-      const serializedTx = serializeEip712({
-        ...tx,
-        customData: {
-          ...tx.customData,
-          customSignature: signature,
-        },
-      });
-
-      const transactionHash = await publicClient.sendRawTransaction({ serializedTransaction: serializedTx as `0x${string}` })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

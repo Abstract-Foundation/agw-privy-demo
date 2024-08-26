@@ -3,6 +3,8 @@ import { getGeneralPaymasterInput } from 'viem/zksync';
 import { abstractTestnet } from 'viem/chains'
 import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, AA_FACTORY_PAYMASTER_ADDRESS } from "../lib/constants";
 import ABI from "../lib/AccountFactory.json";
+import { ConnectedWallet } from '@privy-io/react-auth';
+import { createEoaWalletClient } from './createWalletClientWithAccount';
 
 const publicClient = createPublicClient({
   chain: abstractTestnet,
@@ -21,7 +23,10 @@ async function addressHasCode(address: `0x${string}`): Promise<boolean> {
   }
 }
 
-export async function deployAccount(privyClient: any /* need to figure out the right type */): Promise<`0x${string}`> {
+export async function deployAccount(eoa: ConnectedWallet): Promise<`0x${string}`> {
+  // Generate a Viem client using the privy EOA account
+  const privyClient = await createEoaWalletClient(eoa);
+
   // Generate salt based off address
   const addressBytes = toBytes(privyClient.account.address);
   const salt = keccak256(addressBytes);
