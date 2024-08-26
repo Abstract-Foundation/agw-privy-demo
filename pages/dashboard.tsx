@@ -1,20 +1,29 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
-import { /*useLinkWithSiwe,*/ usePrivy, useWallets } from "@privy-io/react-auth";
+import { /*useLinkWithSiwe,*/ usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
+import {
+  ABS_SEPOLIA_SCAN_URL,
+  NFT_ADDRESS,
+  NFT_PAYMASTER_ADDRESS,
+  VALIDATOR_ADDRESS,
+} from "../lib/constants";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { abstractTestnet } from "viem/chains";
-import { getGeneralPaymasterInput } from "viem/zksync";
-import { createEoaWalletClient } from "../lib/createWalletClientWithAccount";
+import { getGeneralPaymasterInput, serializeTransaction } from "viem/zksync";
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  Hex,
+  parseAbiParameters,
+} from "viem";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const {wallets} = useWallets();
-  const { ready, authenticated, user, logout , signMessage } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
@@ -29,31 +38,99 @@ export default function DashboardPage() {
   const [isMinting, setIsMinting] = useState(false);
 
   const uiConfig = {
-    title: 'Mint an NFT',
-    description: 'You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.',
-    buttonText: 'Mint NFT',
+    title: "Mint an NFT",
+    description:
+      "You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.",
+    buttonText: "Mint NFT",
   };
 
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
-    if (!smartAccountClient || !smartAccountAddress || !eoa) return;
+    if (
+      !smartAccountClient ||
+      !smartAccountAddress ||
+      !smartAccountClient.account
+    )
+      return;
 
     // Store a state to disable the mint button while mint is in progress
     setIsMinting(true);
     const toastId = toast.loading("Minting...");
 
+    const mintData = encodeFunctionData({
+      abi: ABI,
+      functionName: "mint",
+      args: [smartAccountAddress, 1],
+    });
+
     try {
-      const transactionHash = await (await createEoaWalletClient(eoa)).writeContract({
-        account: smartAccountAddress,
-        abi: ABI,
-        functionName: "mint",
-        address: NFT_ADDRESS,
+      const preppedTx = await smartAccountClient.prepareTransactionRequest({
+        account: smartAccountAddress as Hex,
         chain: abstractTestnet,
-        args: [smartAccountAddress, 1],
+        data: mintData,
         paymaster: NFT_PAYMASTER_ADDRESS,
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
         }),
+        to: NFT_ADDRESS,
+        type: "eip712",
+      });
+
+      const typedData = {
+        types: {
+          Transaction: [
+            { name: "txType", type: "uint256" },
+            { name: "from", type: "uint256" },
+            { name: "to", type: "uint256" },
+            { name: "gasLimit", type: "uint256" },
+            { name: "gasPerPubdataByteLimit", type: "uint256" },
+            { name: "maxFeePerGas", type: "uint256" },
+            { name: "maxPriorityFeePerGas", type: "uint256" },
+            { name: "paymaster", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "value", type: "uint256" },
+            { name: "data", type: "bytes" },
+            { name: "factoryDeps", type: "bytes32[]" },
+            { name: "paymasterInput", type: "bytes" },
+          ],
+        },
+        primaryType: "Transaction",
+        message: {
+          txType: 113n,
+          from: preppedTx.from!,
+          to: NFT_ADDRESS,
+          gasLimit: preppedTx.gas,
+          gasPerPubdataByteLimit: 50_000n,
+          maxFeePerGas: preppedTx.maxFeePerGas,
+          maxPriorityFeePerGas: preppedTx.maxPriorityFeePerGas,
+          paymaster: preppedTx.paymaster,
+          nonce: preppedTx.nonce,
+          value: 0,
+          data: preppedTx.data,
+          factoryDeps: [],
+          paymasterInput: preppedTx.paymasterInput,
+        },
+        domain: {
+          name: "zkSync",
+          version: "2",
+          chainId: abstractTestnet.id,
+        },
+      };
+
+      const rawSignature = await smartAccountClient.signTypedData(typedData);
+
+      const signature = encodeAbiParameters(
+        parseAbiParameters(["bytes", "address", "bytes[]"]),
+        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
+      );
+
+      const serializedTx = serializeTransaction({
+        ...preppedTx,
+        customSignature: signature,
+      });
+
+      const transactionHash = await smartAccountClient.sendRawTransaction({
+        serializedTransaction: serializedTx,
       });
 
       toast.update(toastId, {
@@ -92,25 +169,25 @@ export default function DashboardPage() {
 
   const onLink = async () => {
     return;
-      // // The link button is disabled if either of these are undefined
-      // if (!smartAccountClient || !smartAccountAddress) return;
-      // const chainId = `eip155:${abstractTestnet.id}`;
+    // // The link button is disabled if either of these are undefined
+    // if (!smartAccountClient || !smartAccountAddress) return;
+    // const chainId = `eip155:${abstractTestnet.id}`;
 
-      // const message = await generateSiweMessage({
-      //   address: smartAccountAddress,
-      //   chainId
-      // });
+    // const message = await generateSiweMessage({
+    //   address: smartAccountAddress,
+    //   chainId
+    // });
 
-      // const signature = await smartAccountClient.signMessage({message});
+    // const signature = await smartAccountClient.signMessage({message});
 
-      // await linkWithSiwe({
-      //   signature,
-      //   message,
-      //   chainId,
-      //   walletClientType: 'privy_smart_account',
-      //   connectorType: 'safe'
-      // });
-  }
+    // await linkWithSiwe({
+    //   signature,
+    //   message,
+    //   chainId,
+    //   walletClientType: 'privy_smart_account',
+    //   connectorType: 'safe'
+    // });
+  };
 
   return (
     <>
@@ -123,9 +200,7 @@ export default function DashboardPage() {
           <>
             <ToastContainer />
             <div className="flex flex-row justify-between">
-              <h1 className="text-2xl font-semibold">
-                Privy x AGW Demo
-              </h1>
+              <h1 className="text-2xl font-semibold">Privy x AGW Demo</h1>
               <button
                 onClick={logout}
                 className="text-sm bg-violet-200 hover:text-violet-900 py-2 px-4 rounded-md text-violet-700"
@@ -144,7 +219,7 @@ export default function DashboardPage() {
               <button
                 onClick={onLink}
                 className="text-sm bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 py-2 px-4 rounded-md text-white"
-                disabled={true/*isLoading*/}
+                disabled={true /*isLoading*/}
               >
                 Link smart account to user
               </button>

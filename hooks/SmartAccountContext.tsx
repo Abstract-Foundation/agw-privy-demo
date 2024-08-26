@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { ConnectedWallet, useWallets } from "@privy-io/react-auth";
+import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
 import { deployAccount } from '../lib/deployAccount';
 import { createSmartContractAccount, createSmartContractWalletClient, SmartContractClient } from "../lib/createWalletClientWithAccount";
 import { ZksyncSmartAccount } from "viem/zksync";
@@ -44,6 +44,7 @@ export const SmartAccountProvider = ({
 
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet>();
+  const { signMessage } = usePrivy();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
     `0x${string}` | undefined
   >();
@@ -61,8 +62,17 @@ export const SmartAccountProvider = ({
       const scAccountAddress = await deployAccount(connectedEoa);
 
       // Once deployed, setup a Viem client with the smart account which uses the EOA to sign
-      const scAccount = createSmartContractAccount(scAccountAddress, connectedEoa);
+      const scAccount = createSmartContractAccount(scAccountAddress, 
+        signMessage,
+        {
+          title: 'Mint an NFT',
+          description: 'You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.',
+          buttonText: 'Mint NFT',
+        }
+      );
       const scAccountClient = createSmartContractWalletClient(scAccount);
+
+      console.log(scAccountClient);
 
       // Set the smart account state
       setSmartAccount(scAccount);

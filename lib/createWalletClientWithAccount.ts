@@ -10,7 +10,7 @@ import {
   Transport,
   WalletClient,
 } from "viem";
-import { ConnectedWallet } from "@privy-io/react-auth";
+import { ConnectedWallet, SignMessageModalUIOptions } from "@privy-io/react-auth";
 import { abstractTestnet } from "viem/chains";
 import {
   eip712WalletActions,
@@ -23,17 +23,18 @@ const testnetRpcUrl = "https://api.testnet.abs.xyz";
 /**
  * Creates a smart contract account from a deployed contract address.
  * @param contractAddress - The address of the deployed smart contract account
- * @param signerWallet - The Privy EOA (who is the initial k1 signer)
  */
 export function createSmartContractAccount(
   contractAddress: Hex,
-  signerWallet: ConnectedWallet
+  signMessage:  (message: string, uiOptions?: SignMessageModalUIOptions) => Promise<string>,
+  uiOptions?: SignMessageModalUIOptions
 ): ZksyncSmartAccount {
   return toSmartAccount({
     address: contractAddress, // The address of the deployed smart contract account
     async sign({ hash }) {
+      console.log("Hash to sign: ", hash);
       // The Privy EOA (who is the initial k1 signer) signs msgs/txs
-      const result = await signerWallet.sign(hash);
+      const result = await signMessage(hash, uiOptions);
       return result as Hex;
     },
   });
