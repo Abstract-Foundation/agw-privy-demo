@@ -9,6 +9,9 @@ export const VALIDATOR_ADDRESS = "0xba32cA59dEc70Bf33bD600740d0cb5F614a08cf3";
 export const NFT_ADDRESS = "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA";
 
 // Sample paymaster that sponsors NFT mints
-export const PAYMASTER_ADDRESS = "0xa8dA6C5bf7dA8c2D5A642D3dcc0E04D68D134806";
+export const NFT_PAYMASTER_ADDRESS = "0xa8dA6C5bf7dA8c2D5A642D3dcc0E04D68D134806";
+
+// Sample paymaster that sponsors AA wallet creation
+export const AA_FACTORY_PAYMASTER_ADDRESS = "0xD256F2783DF5cc669AEB60d0c5666DD3dB5f6110";
 
 export const ABS_SEPOLIA_SCAN_URL = "https://explorer.testnet.abs.xyz";

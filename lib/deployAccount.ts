@@ -1,6 +1,7 @@
 import { createPublicClient, http, encodeFunctionData, Hex, WalletClient, CustomTransport, Chain, Account, toBytes, keccak256 } from 'viem'
+import { getGeneralPaymasterInput } from 'viem/zksync';
 import { abstractTestnet } from 'viem/chains'
-import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS } from "../lib/constants";
+import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, AA_FACTORY_PAYMASTER_ADDRESS } from "../lib/constants";
 import ABI from "../lib/AccountFactory.json";
 
 const publicClient = createPublicClient({
@@ -20,7 +21,7 @@ async function addressHasCode(address: `0x${string}`): Promise<boolean> {
   }
 }
 
-export async function deployAccount(privyClient:  WalletClient<CustomTransport, Chain, Account>): Promise<`0x${string}`> {
+export async function deployAccount(privyClient: any /* need to figure out the right type */): Promise<`0x${string}`> {
   // Generate salt based off address
   const addressBytes = toBytes(privyClient.account.address);
   const salt = keccak256(addressBytes);
@@ -79,12 +80,18 @@ export async function deployAccount(privyClient:  WalletClient<CustomTransport, 
     ]
   })
 
+  const paymasterInput = getGeneralPaymasterInput({
+    innerInput: '0x',
+  });
+
   // Deploy the account
   const hash = await privyClient.writeContract({
     address: SMART_ACCOUNT_FACTORY_ADDRESS,
     abi: ABI,
     functionName: 'deployAccount',
     args: [salt, initializer],
+    paymaster: AA_FACTORY_PAYMASTER_ADDRESS, 
+    paymasterInput: paymasterInput
   })
 
   // Wait for the transaction to be mined

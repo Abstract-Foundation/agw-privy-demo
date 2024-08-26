@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useLinkWithSiwe, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, PAYMASTER_ADDRESS } from "../lib/constants";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
 import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
@@ -84,7 +84,7 @@ export default function DashboardPage() {
         customData: {
           gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
           paymasterParams: {
-            paymaster: PAYMASTER_ADDRESS,
+            paymaster: NFT_PAYMASTER_ADDRESS,
             paymasterInput: paymasterInput,
           }
         } as types.Eip712Meta,

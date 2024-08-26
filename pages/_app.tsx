@@ -46,7 +46,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       </Head>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        clientId='client-WY5amHUxxFHMHHMmPJvBQgGPJQ1WuMFjP57qUmHcbu4g2'
+        clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
         config={{
           loginMethods: ["email", "google"],
           appearance: {
