@@ -8,16 +8,16 @@ import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import { createPublicClient, http,createWalletClient, custom, encodeAbiParameters, parseAbiParameters } from "viem";
+import { createPublicClient, http, encodeAbiParameters, parseAbiParameters } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions, getGeneralPaymasterInput } from "viem/zksync";
+import { getGeneralPaymasterInput } from "viem/zksync";
 import { serializeEip712 } from "zksync-ethers/build/utils";
 import { EIP712Signer, utils, types } from 'zksync-ethers';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { ready, authenticated, user, logout } = usePrivy();
-  const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
+  // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
   // If the user is not authenticated, redirect them back to the landing page
@@ -44,13 +44,6 @@ export default function DashboardPage() {
     const toastId = toast.loading("Minting...");
 
     try {
-      const eip1193provider = await eoa!.getEthereumProvider();
-      const embeddedWalletClient = createWalletClient({
-        account: eoa!.address as `0x${string}`,
-        chain: abstractTestnet,
-        transport: custom(eip1193provider),
-      }).extend(eip712WalletActions());
-
       const mintData = encodeFunctionData({
         abi: ABI,
         functionName: "mint",
@@ -91,7 +84,7 @@ export default function DashboardPage() {
       };
       const signedTxHash = EIP712Signer.getSignedDigest(tx);
 
-      const rawSignature = await embeddedWalletClient.signMessage({
+      const rawSignature = await smartAccountClient.signMessage({
         message: { raw: signedTxHash as Hex },
       });
       const signature = encodeAbiParameters(
@@ -144,24 +137,25 @@ export default function DashboardPage() {
   };
 
   const onLink = async () => {
-      // The link button is disabled if either of these are undefined
-      if (!smartAccountClient || !smartAccountAddress) return;
-      const chainId = `eip155:${abstractTestnet.id}`;
+    return;
+      // // The link button is disabled if either of these are undefined
+      // if (!smartAccountClient || !smartAccountAddress) return;
+      // const chainId = `eip155:${abstractTestnet.id}`;
 
-      const message = await generateSiweMessage({
-        address: smartAccountAddress,
-        chainId
-      });
+      // const message = await generateSiweMessage({
+      //   address: smartAccountAddress,
+      //   chainId
+      // });
 
-      const signature = await smartAccountClient.signMessage({message});
+      // const signature = await smartAccountClient.signMessage({message});
 
-      await linkWithSiwe({
-        signature,
-        message,
-        chainId,
-        walletClientType: 'privy_smart_account',
-        connectorType: 'safe'
-      });
+      // await linkWithSiwe({
+      //   signature,
+      //   message,
+      //   chainId,
+      //   walletClientType: 'privy_smart_account',
+      //   connectorType: 'safe'
+      // });
   }
 
   return (
@@ -196,7 +190,7 @@ export default function DashboardPage() {
               <button
                 onClick={onLink}
                 className="text-sm bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 py-2 px-4 rounded-md text-white"
-                disabled={isLoading}
+                disabled={true/*isLoading*/}
               >
                 Link smart account to user
               </button>
