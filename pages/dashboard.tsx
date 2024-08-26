@@ -3,17 +3,21 @@ import React, { useEffect, useState } from "react";
 import { useLinkWithSiwe, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { BASE_SEPOLIA_SCAN_URL, NFT_ADDRESS } from "../lib/constants";
-import { encodeFunctionData } from "viem";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
+import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import { baseSepolia } from "viem/chains";
+import { createPublicClient, http, encodeAbiParameters, parseAbiParameters } from "viem";
+import { abstractTestnet } from "viem/chains";
+import { getGeneralPaymasterInput } from "viem/zksync";
+import { serializeEip712 } from "zksync-ethers/build/utils";
+import { EIP712Signer, utils, types } from 'zksync-ethers';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { ready, authenticated, user, logout } = usePrivy();
-  const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
+  // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
   // If the user is not authenticated, redirect them back to the landing page
@@ -26,6 +30,11 @@ export default function DashboardPage() {
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
+  const publicClient = createPublicClient({
+    chain: abstractTestnet,
+    transport: http()
+  })
+
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
     if (!smartAccountClient || !smartAccountAddress) return;
@@ -35,16 +44,63 @@ export default function DashboardPage() {
     const toastId = toast.loading("Minting...");
 
     try {
-      const transactionHash = await smartAccountClient.sendTransaction({
-        account: smartAccountClient.account!,
-        chain: baseSepolia,
-        to: NFT_ADDRESS,
-        data: encodeFunctionData({
-          abi: ABI,
-          functionName: "mint",
-          args: [smartAccountAddress],
-        }),
+      const mintData = encodeFunctionData({
+        abi: ABI,
+        functionName: "mint",
+        args: [smartAccountAddress, 1]
+      })
+
+      const nonce = await publicClient.getTransactionCount({
+        address: smartAccountAddress
       });
+      const gasPrice = await publicClient.getGasPrice()
+      const gasLimit = await publicClient.estimateGas({
+        account: smartAccountAddress,
+        to: NFT_ADDRESS,
+        data: mintData,
+      })
+
+      const paymasterInput = getGeneralPaymasterInput({
+        innerInput: '0x',
+      });
+
+      const tx = {
+        from: smartAccountAddress,
+        to: NFT_ADDRESS,
+        data: mintData,
+        nonce: nonce,
+        gasLimit: gasLimit.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: abstractTestnet.id,
+        value: 0,
+        type: 113,
+        customData: {
+          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+          paymasterParams: {
+            paymaster: NFT_PAYMASTER_ADDRESS,
+            paymasterInput: paymasterInput,
+          }
+        } as types.Eip712Meta,
+      };
+      const signedTxHash = EIP712Signer.getSignedDigest(tx);
+
+      const rawSignature = await smartAccountClient.signMessage({
+        message: { raw: signedTxHash as Hex },
+      });
+      const signature = encodeAbiParameters(
+        parseAbiParameters(['bytes', 'address', 'bytes[]']),
+        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
+      );
+
+      const serializedTx = serializeEip712({
+        ...tx,
+        customData: {
+          ...tx.customData,
+          customSignature: signature,
+        },
+      });
+
+      const transactionHash = await publicClient.sendRawTransaction({ serializedTransaction: serializedTx as `0x${string}` })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -54,7 +110,7 @@ export default function DashboardPage() {
 
       toast.update(toastId, {
         render: (
-          <Alert href={`${BASE_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
+          <Alert href={`${ABS_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
             Successfully minted! Click here to see your transaction.
           </Alert>
         ),
@@ -81,30 +137,31 @@ export default function DashboardPage() {
   };
 
   const onLink = async () => {
-      // The link button is disabled if either of these are undefined
-      if (!smartAccountClient || !smartAccountAddress) return;
-      const chainId = `eip155:${baseSepolia.id}`;
+    return;
+      // // The link button is disabled if either of these are undefined
+      // if (!smartAccountClient || !smartAccountAddress) return;
+      // const chainId = `eip155:${abstractTestnet.id}`;
 
-      const message = await generateSiweMessage({
-        address: smartAccountAddress,
-        chainId
-      });
+      // const message = await generateSiweMessage({
+      //   address: smartAccountAddress,
+      //   chainId
+      // });
 
-      const signature = await smartAccountClient.signMessage({message});
+      // const signature = await smartAccountClient.signMessage({message});
 
-      await linkWithSiwe({
-        signature,
-        message,
-        chainId,
-        walletClientType: 'privy_smart_account',
-        connectorType: 'safe'
-      });
+      // await linkWithSiwe({
+      //   signature,
+      //   message,
+      //   chainId,
+      //   walletClientType: 'privy_smart_account',
+      //   connectorType: 'safe'
+      // });
   }
 
   return (
     <>
       <Head>
-        <title>Privy x Permissionless Demo</title>
+        <title>Privy x AGW Demo</title>
       </Head>
 
       <main className="flex flex-col min-h-screen px-4 sm:px-20 py-6 sm:py-10 bg-privy-light-blue">
@@ -113,7 +170,7 @@ export default function DashboardPage() {
             <ToastContainer />
             <div className="flex flex-row justify-between">
               <h1 className="text-2xl font-semibold">
-                Privy x Permissionless Demo
+                Privy x AGW Demo
               </h1>
               <button
                 onClick={logout}
@@ -133,7 +190,7 @@ export default function DashboardPage() {
               <button
                 onClick={onLink}
                 className="text-sm bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 py-2 px-4 rounded-md text-white"
-                disabled={isLoading}
+                disabled={true/*isLoading*/}
               >
                 Link smart account to user
               </button>
@@ -143,7 +200,7 @@ export default function DashboardPage() {
             </p>
             <a
               className="mt-2 text-sm text-gray-500 hover:text-violet-600"
-              href={`${BASE_SEPOLIA_SCAN_URL}/address/${smartAccountAddress}#tokentxnsErc721`}
+              href={`${ABS_SEPOLIA_SCAN_URL}/address/${smartAccountAddress}`}
             >
               {smartAccountAddress}
             </a>
@@ -152,7 +209,7 @@ export default function DashboardPage() {
             </p>
             <a
               className="mt-2 text-sm text-gray-500 hover:text-violet-600"
-              href={`${BASE_SEPOLIA_SCAN_URL}/address/${eoa?.address}`}
+              href={`${ABS_SEPOLIA_SCAN_URL}/address/${eoa?.address}`}
             >
               {eoa?.address}
             </a>
