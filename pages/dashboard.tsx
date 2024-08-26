@@ -20,6 +20,7 @@ import {
   Hex,
   parseAbiParameters,
 } from "viem";
+import { getSignInput, getTypedDataDomain, typedDataTypes } from "../lib/eip712";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -37,21 +38,9 @@ export default function DashboardPage() {
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
-  const uiConfig = {
-    title: "Mint an NFT",
-    description:
-      "You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.",
-    buttonText: "Mint NFT",
-  };
-
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
-    if (
-      !smartAccountClient ||
-      !smartAccountAddress ||
-      !smartAccountClient.account
-    )
-      return;
+    if (!smartAccountClient || !smartAccountAddress || !smartAccountClient.account) return;
 
     // Store a state to disable the mint button while mint is in progress
     setIsMinting(true);
@@ -64,6 +53,7 @@ export default function DashboardPage() {
     });
 
     try {
+      // Prepare a transaction to mint an NFT using the smart account
       const preppedTx = await smartAccountClient.prepareTransactionRequest({
         account: smartAccountAddress as Hex,
         chain: abstractTestnet,
@@ -76,47 +66,15 @@ export default function DashboardPage() {
         type: "eip712",
       });
 
+      // Convert the prepped transaction into a typed data object
       const typedData = {
-        types: {
-          Transaction: [
-            { name: "txType", type: "uint256" },
-            { name: "from", type: "uint256" },
-            { name: "to", type: "uint256" },
-            { name: "gasLimit", type: "uint256" },
-            { name: "gasPerPubdataByteLimit", type: "uint256" },
-            { name: "maxFeePerGas", type: "uint256" },
-            { name: "maxPriorityFeePerGas", type: "uint256" },
-            { name: "paymaster", type: "uint256" },
-            { name: "nonce", type: "uint256" },
-            { name: "value", type: "uint256" },
-            { name: "data", type: "bytes" },
-            { name: "factoryDeps", type: "bytes32[]" },
-            { name: "paymasterInput", type: "bytes" },
-          ],
-        },
+        types: typedDataTypes(),
         primaryType: "Transaction",
-        message: {
-          txType: 113n,
-          from: preppedTx.from!,
-          to: NFT_ADDRESS,
-          gasLimit: preppedTx.gas,
-          gasPerPubdataByteLimit: 50_000n,
-          maxFeePerGas: preppedTx.maxFeePerGas,
-          maxPriorityFeePerGas: preppedTx.maxPriorityFeePerGas,
-          paymaster: preppedTx.paymaster,
-          nonce: preppedTx.nonce,
-          value: 0,
-          data: preppedTx.data,
-          factoryDeps: [],
-          paymasterInput: preppedTx.paymasterInput,
-        },
-        domain: {
-          name: "zkSync",
-          version: "2",
-          chainId: abstractTestnet.id,
-        },
+        message: getSignInput(preppedTx), // Reshape the object into Eip-712 format
+        domain: getTypedDataDomain(),
       };
 
+      // The EOA signs the typed data under the hood
       const rawSignature = await smartAccountClient.signTypedData(typedData);
 
       const signature = encodeAbiParameters(
@@ -124,6 +82,8 @@ export default function DashboardPage() {
         [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
       );
 
+      // Finally, format a transaction where it's sent from the smart contract
+      // But the signature is from the EOA that is the signer of the account
       const serializedTx = serializeTransaction({
         ...preppedTx,
         customSignature: signature,
