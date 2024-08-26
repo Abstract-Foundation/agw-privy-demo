@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { Account, createPublicClient, createWalletClient, custom, WalletClient, CustomTransport } from "viem";
+import { createWalletClient, custom } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { Chain, Transport } from "viem";
-import { eip712WalletActions } from 'viem/zksync'
+import { eip712WalletActions, toSmartAccount, ZksyncSmartAccount } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
 
 /** Interface returned by custom `useSmartAccount` hook */
@@ -12,7 +11,7 @@ interface SmartAccountInterface {
   eoa: ConnectedWallet | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
-    | WalletClient<CustomTransport, Chain, Account>
+    | ZksyncSmartAccount
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
@@ -47,7 +46,7 @@ export const SmartAccountProvider = ({
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
   const [smartAccountClient, setSmartAccountClient] = useState<
-    | WalletClient<CustomTransport, Chain, Account>
+    | ZksyncSmartAccount
     | undefined
   >();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
@@ -66,13 +65,19 @@ export const SmartAccountProvider = ({
       setEoa(eoa);
 
       const eip1193provider = await eoa.getEthereumProvider();
-      const smartAccountClient = createWalletClient({
+      const embeddedWalletClient = createWalletClient({
         account: eoa.address as `0x${string}`,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
       }).extend(eip712WalletActions());
 
-      const smartAccountAddress = await deployAccount(smartAccountClient);
+      const smartAccountAddress = await deployAccount(embeddedWalletClient);
+      const smartAccountClient = toSmartAccount({
+        address: smartAccountAddress, 
+        async sign({ hash }) {
+          return await eoa.sign(hash) as `0x${string}`
+        }
+      });
 
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountAddress);

@@ -1,10 +1,7 @@
 import { createPublicClient, http, encodeFunctionData, Hex, WalletClient, CustomTransport, Chain, Account, toBytes, keccak256 } from 'viem'
 import { abstractTestnet } from 'viem/chains'
+import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS } from "../lib/constants";
 import ABI from "../lib/AccountFactory.json";
-
-// Environment variables
-const FACTORY_ADDRESS = '0x88219cF9438e6fFF5ffA9812CEf4F433E2f2f4A6'
-const EOA_VALIDATOR_ADDRESS = '0xC23a31018bf14bEFC9d7C209d6B4646C3EFC4138'
 
 const publicClient = createPublicClient({
   chain: abstractTestnet,
@@ -30,7 +27,7 @@ export async function deployAccount(privyClient:  WalletClient<CustomTransport, 
 
   // Get the deployed account address
   const accountAddress = await publicClient.readContract({
-    address: FACTORY_ADDRESS,
+    address: SMART_ACCOUNT_FACTORY_ADDRESS,
     abi: ABI,
     functionName: 'getAddressForSalt',
     args: [salt],
@@ -76,7 +73,7 @@ export async function deployAccount(privyClient:  WalletClient<CustomTransport, 
     functionName: 'initialize',
     args: [
       privyClient.account.address,
-      EOA_VALIDATOR_ADDRESS,
+      VALIDATOR_ADDRESS,
       [],
       call
     ]
@@ -84,7 +81,7 @@ export async function deployAccount(privyClient:  WalletClient<CustomTransport, 
 
   // Deploy the account
   const hash = await privyClient.writeContract({
-    address: FACTORY_ADDRESS,
+    address: SMART_ACCOUNT_FACTORY_ADDRESS,
     abi: ABI,
     functionName: 'deployAccount',
     args: [salt, initializer],

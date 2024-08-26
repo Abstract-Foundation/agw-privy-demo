@@ -21,7 +21,8 @@
     "react": "18.2.0",
     "react-dom": "^18.2.0",
     "react-toastify": "^10.0.5",
-    "viem": "^2.20.0"
+    "viem": "^2.20.0",
+    "zksync-ethers": "^6.11.2"
   },
   "devDependencies": {
     "@tsconfig/node16-strictest-esm": "^1.0.3",

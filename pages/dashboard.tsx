@@ -3,12 +3,16 @@ import React, { useEffect, useState } from "react";
 import { useLinkWithSiwe, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS } from "../lib/constants";
-import { encodeFunctionData } from "viem";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS } from "../lib/constants";
+import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
+import { createPublicClient, http,createWalletClient, custom, encodeAbiParameters, parseAbiParameters } from "viem";
 import { abstractTestnet } from "viem/chains";
+import { eip712WalletActions } from "viem/zksync";
+import { serializeEip712 } from "zksync-ethers/build/utils";
+import { EIP712Signer, utils, types } from 'zksync-ethers';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -26,6 +30,11 @@ export default function DashboardPage() {
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
+  const publicClient = createPublicClient({
+    chain: abstractTestnet,
+    transport: http()
+  })
+
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
     if (!smartAccountClient || !smartAccountAddress) return;
@@ -35,16 +44,63 @@ export default function DashboardPage() {
     const toastId = toast.loading("Minting...");
 
     try {
-      const transactionHash = await smartAccountClient.sendTransaction({
-        account: smartAccountClient.account!,
+      const eip1193provider = await eoa!.getEthereumProvider();
+      const embeddedWalletClient = createWalletClient({
+        account: eoa!.address as `0x${string}`,
         chain: abstractTestnet,
-        to: NFT_ADDRESS,
-        data: encodeFunctionData({
-          abi: ABI,
-          functionName: "mint",
-          args: [smartAccountAddress],
-        }),
+        transport: custom(eip1193provider),
+      }).extend(eip712WalletActions());
+
+      const mintData = encodeFunctionData({
+        abi: ABI,
+        functionName: "mint",
+        args: [smartAccountAddress, 1]
+      })
+
+      const nonce = await publicClient.getTransactionCount({
+        address: smartAccountAddress
       });
+      const gasPrice = await publicClient.getGasPrice()
+      const gasLimit = await publicClient.estimateGas({
+        account: smartAccountAddress,
+        to: NFT_ADDRESS,
+        data: mintData,
+      })
+
+      const tx = {
+        from: smartAccountAddress,
+        to: NFT_ADDRESS,
+        data: mintData,
+        nonce: nonce,
+        gasLimit: gasLimit.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: abstractTestnet.id,
+        value: 0,
+        type: 113,
+        customData: {
+          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+          paymasterParams: undefined
+        } as types.Eip712Meta,
+      };
+      const signedTxHash = EIP712Signer.getSignedDigest(tx);
+
+      const rawSignature = await embeddedWalletClient.signMessage({
+        message: { raw: signedTxHash as Hex },
+      });
+      const signature = encodeAbiParameters(
+        parseAbiParameters(['bytes', 'address', 'bytes[]']),
+        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
+      );
+
+      const serializedTx = serializeEip712({
+        ...tx,
+        customData: {
+          ...tx.customData,
+          customSignature: signature,
+        },
+      });
+
+      const transactionHash = await publicClient.sendRawTransaction({ serializedTransaction: serializedTx as `0x${string}` })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
