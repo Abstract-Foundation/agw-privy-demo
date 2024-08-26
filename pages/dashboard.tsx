@@ -3,14 +3,14 @@ import React, { useEffect, useState } from "react";
 import { useLinkWithSiwe, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
-import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS } from "../lib/constants";
+import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, PAYMASTER_ADDRESS } from "../lib/constants";
 import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { createPublicClient, http,createWalletClient, custom, encodeAbiParameters, parseAbiParameters } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions } from "viem/zksync";
+import { eip712WalletActions, getGeneralPaymasterInput } from "viem/zksync";
 import { serializeEip712 } from "zksync-ethers/build/utils";
 import { EIP712Signer, utils, types } from 'zksync-ethers';
 
@@ -67,6 +67,10 @@ export default function DashboardPage() {
         data: mintData,
       })
 
+      const paymasterInput = getGeneralPaymasterInput({
+        innerInput: '0x',
+      });
+
       const tx = {
         from: smartAccountAddress,
         to: NFT_ADDRESS,
@@ -79,7 +83,10 @@ export default function DashboardPage() {
         type: 113,
         customData: {
           gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
-          paymasterParams: undefined
+          paymasterParams: {
+            paymaster: PAYMASTER_ADDRESS,
+            paymasterInput: paymasterInput,
+          }
         } as types.Eip712Meta,
       };
       const signedTxHash = EIP712Signer.getSignedDigest(tx);
