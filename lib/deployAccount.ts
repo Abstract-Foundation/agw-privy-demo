@@ -1,4 +1,4 @@
-import { createPublicClient, http, encodeFunctionData, Hex, WalletClient, CustomTransport, Chain, Account, toBytes, keccak256 } from 'viem'
+import { createPublicClient, http, encodeFunctionData, Hex, toBytes, keccak256 } from 'viem'
 import { getGeneralPaymasterInput } from 'viem/zksync';
 import { abstractTestnet } from 'viem/chains'
 import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, AA_FACTORY_PAYMASTER_ADDRESS } from "../lib/constants";
