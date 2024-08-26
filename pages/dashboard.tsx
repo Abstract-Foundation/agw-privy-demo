@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const [isMinting, setIsMinting] = useState(false);
 
   const uiConfig = {
-    title: 'Mint an NFT with your Abstract Global Wallet',
+    title: 'Mint an NFT',
     description: 'You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.',
     buttonText: 'Mint NFT',
   };
@@ -205,7 +205,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="mt-6 font-bold uppercase text-sm text-gray-600">
-              Your Smart Wallet Address
+              Your Abstract Global Wallet Address
             </p>
             <a
               className="mt-2 text-sm text-gray-500 hover:text-violet-600"
