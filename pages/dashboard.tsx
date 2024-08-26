@@ -16,7 +16,7 @@ import { EIP712Signer, utils, types } from 'zksync-ethers';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout } = usePrivy();
+  const { ready, authenticated, user, logout, signMessage } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
@@ -29,6 +29,12 @@ export default function DashboardPage() {
 
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
+
+  const uiConfig = {
+    title: 'Mint an NFT with your Abstract Global Wallet',
+    description: 'You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.',
+    buttonText: 'Mint NFT',
+  };
 
   const publicClient = createPublicClient({
     chain: abstractTestnet,
@@ -84,9 +90,12 @@ export default function DashboardPage() {
       };
       const signedTxHash = EIP712Signer.getSignedDigest(tx);
 
-      const rawSignature = await smartAccountClient.signMessage({
-        message: { raw: signedTxHash as Hex },
-      });
+      // const rawSignature = await smartAccountClient.signMessage({
+      //   message: { raw: signedTxHash as Hex },
+      // });
+
+      const rawSignature = await signMessage(signedTxHash as Hex, uiConfig);
+
       const signature = encodeAbiParameters(
         parseAbiParameters(['bytes', 'address', 'bytes[]']),
         [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
