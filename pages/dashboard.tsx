@@ -4,7 +4,7 @@ import { /*useLinkWithSiwe,*/ usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
 import { ABS_SEPOLIA_SCAN_URL, NFT_ADDRESS, VALIDATOR_ADDRESS, NFT_PAYMASTER_ADDRESS } from "../lib/constants";
-import { encodeFunctionData, Hex } from "viem";
+import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
@@ -16,7 +16,7 @@ import { EIP712Signer, utils, types } from 'zksync-ethers';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout, signMessage } = usePrivy();
+  const { ready, authenticated, user, logout, signTypedData } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
@@ -90,11 +90,30 @@ export default function DashboardPage() {
       };
       const signedTxHash = EIP712Signer.getSignedDigest(tx);
 
-      // const rawSignature = await smartAccountClient.signMessage({
-      //   message: { raw: signedTxHash as Hex },
-      // });
+      const domain = {
+        name: 'zkSync',
+        version: '2',
+        chainId: abstractTestnet.id,
+      };
+      
+      const types = {
+        SignMessage: [
+          { name: 'details', type: 'string' },
+          { name: 'hash', type: 'bytes32' }
+        ]
+      }
 
-      const rawSignature = await signMessage(signedTxHash as Hex, uiConfig);
+      const typedData = {
+        types,
+        domain,
+        primaryType: 'SignMessage',
+        message: {
+          details: "You are signing a hash of your transaction",
+          hash: signedTxHash,
+        }
+      };
+
+      const rawSignature = await signTypedData(typedData, uiConfig);
 
       const signature = encodeAbiParameters(
         parseAbiParameters(['bytes', 'address', 'bytes[]']),
