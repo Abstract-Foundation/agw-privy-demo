@@ -130,11 +130,7 @@ export default function DashboardPage() {
         }
       };
 
-      console.log(typedData)
-
       const rawSignature = await signTypedData(typedData, uiConfig);
-
-      console.log("rawsig", rawSignature)
 
       const signature = encodeAbiParameters(
         parseAbiParameters(['bytes', 'address', 'bytes[]']),
