@@ -14,6 +14,22 @@ import { getGeneralPaymasterInput } from "viem/zksync";
 import { serializeEip712 } from "zksync-ethers/build/utils";
 import { EIP712Signer, utils, types } from 'zksync-ethers';
 
+function ExportWalletButton() {
+  const {ready, authenticated, user, exportWallet} = usePrivy();
+  // Check that your user is authenticated
+  const isAuthenticated = ready && authenticated;
+  // Check that your user has an embedded wallet
+  const hasEmbeddedWallet = user!.linkedAccounts.find(
+    (account) => account.type === 'wallet' && account.walletClient === 'privy',
+  );
+
+  return (
+    <button onClick={exportWallet} disabled={!isAuthenticated || !hasEmbeddedWallet}>
+      Export my wallet
+    </button>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { ready, authenticated, user, logout, signTypedData } = usePrivy();
@@ -94,6 +110,7 @@ export default function DashboardPage() {
         name: 'zkSync',
         version: '2',
         chainId: abstractTestnet.id,
+        verifyingContract: VALIDATOR_ADDRESS,
       };
       
       const types = {
@@ -113,7 +130,11 @@ export default function DashboardPage() {
         }
       };
 
+      console.log(typedData)
+
       const rawSignature = await signTypedData(typedData, uiConfig);
+
+      console.log("rawsig", rawSignature)
 
       const signature = encodeAbiParameters(
         parseAbiParameters(['bytes', 'address', 'bytes[]']),
@@ -196,6 +217,7 @@ export default function DashboardPage() {
         {ready && authenticated && !isLoading ? (
           <>
             <ToastContainer />
+            <ExportWalletButton/>
             <div className="flex flex-row justify-between">
               <h1 className="text-2xl font-semibold">
                 Privy x AGW Demo
