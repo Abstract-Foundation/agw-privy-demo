@@ -94,6 +94,7 @@ export default function DashboardPage() {
         name: 'zkSync',
         version: '2',
         chainId: abstractTestnet.id,
+        verifyingContract: VALIDATOR_ADDRESS,
       };
       
       const types = {
