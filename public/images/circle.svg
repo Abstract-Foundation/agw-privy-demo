@@ -1,0 +1,38 @@
+<svg width="180" height="181" viewBox="0 0 180 181" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+    <path d="M90 168C132.526 168 167 133.526 167 91C167 48.4741 132.526 14 90 14C47.4741 14 13 48.4741 13 91C13 133.526 47.4741 168 90 168Z" fill="#D4D1BF"/>
+    <path d="M90 168C132.526 168 167 133.526 167 91C167 48.4741 132.526 14 90 14C47.4741 14 13 48.4741 13 91C13 133.526 47.4741 168 90 168Z" fill="#98E5F6"/>
+    <path d="M90 168C132.526 168 167 133.526 167 91C167 48.4741 132.526 14 90 14C47.4741 14 13 48.4741 13 91C13 133.526 47.4741 168 90 168Z" stroke="url(#paint0_linear_66_51)" stroke-width="2"/>
+    <circle cx="90" cy="91" r="87" stroke="url(#paint1_angular_66_51)" stroke-opacity="0.5" stroke-width="6"/>
+    <circle cx="90" cy="91" r="89.75" stroke="url(#paint2_angular_66_51)" stroke-width="0.5"/>
+    <path d="M89.1008 177C41.5486 177 3 138.049 3 90C3 41.9512 41.5486 3 89.1008 3C109.044 3 127.404 9.85128 142 21.3516" stroke="url(#paint3_angular_66_51)" stroke-width="6" stroke-linecap="round"/>
+    <defs>
+        <linearGradient id="paint0_linear_66_51" x1="30.72" y1="23.36" x2="177.4" y2="150.28" gradientUnits="userSpaceOnUse">
+            <stop stop-color="white"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.2"/>
+        </linearGradient>
+        <radialGradient id="paint1_angular_66_51" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(72.5 83.6667) rotate(88.3848) scale(127.825)">
+            <stop stop-color="#BDEEFF"/>
+            <stop offset="0.119878" stop-color="#C5F0FF" stop-opacity="0.904098"/>
+            <stop offset="0.31055" stop-color="#D1F3FF" stop-opacity="0.75156"/>
+            <stop offset="0.409175" stop-color="#A8FFD5" stop-opacity="0.67266"/>
+            <stop offset="0.531185" stop-color="#E0F7FF" stop-opacity="0.575052"/>
+            <stop offset="0.944162" stop-color="#A8FFD5"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.2"/>
+        </radialGradient>
+        <radialGradient id="paint2_angular_66_51" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(72.5 83.6667) rotate(88.3848) scale(127.825)">
+            <stop stop-color="#BDEEFF"/>
+            <stop offset="0.119878" stop-color="#C5F0FF" stop-opacity="0.904098"/>
+            <stop offset="0.31055" stop-color="#D1F3FF" stop-opacity="0.75156"/>
+            <stop offset="0.409175" stop-color="#A8FFD5" stop-opacity="0.67266"/>
+            <stop offset="0.531185" stop-color="#E0F7FF" stop-opacity="0.575052"/>
+            <stop offset="0.944162" stop-color="#A8FFD5"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.2"/>
+        </radialGradient>
+        <radialGradient id="paint3_angular_66_51" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(72.359 82.9111) rotate(88.4015) scale(123.563 122.288)">
+            <stop stop-color="#17C3FF"/>
+            <stop offset="0.119878" stop-color="#49D0FF"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.2"/>
+        </radialGradient>
+    </defs>
+</svg>
