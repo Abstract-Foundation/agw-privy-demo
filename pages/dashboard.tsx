@@ -110,8 +110,14 @@ export default function DashboardPage() {
 
       const types = {
         SignMessage: [
-          { name: "details", type: "string" },
-          { name: "hash", type: "bytes32" },
+          {
+            name: "details",
+            type: "string",
+          },
+          {
+            name: "hash",
+            type: "bytes32",
+          },
         ],
       };
 
@@ -265,7 +271,9 @@ function AddressCell({ address }: { address: string }) {
   return (
     <a
       target="_blank"
-      style={{ boxShadow: "0px 0.79px 2.37px 0px rgba(0, 0, 0, 0.29)" }}
+      style={{
+        boxShadow: "0px 0.79px 2.37px 0px rgba(0, 0, 0, 0.29)",
+      }}
       className="py-1.5 px-4 rounded-full font-medium text-[#93969a] bg-gradient-primary"
       href={`${ABS_SEPOLIA_SCAN_URL}/address/${formattedAddress}`}
     >

@@ -59,7 +59,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           },
           // @ts-ignore
           defaultChain: abstractTestnet,
-          supportedChains: [abstractTestnet]
+          supportedChains: [abstractTestnet],
         }}
       >
         <SmartAccountProvider>
