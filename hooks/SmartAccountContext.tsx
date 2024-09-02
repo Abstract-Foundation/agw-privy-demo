@@ -2,8 +2,10 @@ import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
 import { Account, Chain, createWalletClient, custom, CustomTransport, WalletClient } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions, } from 'viem/zksync'
+import { eip712WalletActions } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
+import { ZksyncSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
+import { VALIDATOR_ADDRESS } from '../lib/constants';
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -15,6 +17,7 @@ interface SmartAccountInterface {
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
+  zksyncSmartAccountClient: ZksyncSmartAccountClient | undefined;
   /** Boolean to indicate whether the smart account state has initialized */
   smartAccountReady: boolean;
 }
@@ -23,6 +26,7 @@ const SmartAccountContext = React.createContext<SmartAccountInterface>({
   eoa: undefined,
   smartAccountClient: undefined,
   smartAccountAddress: undefined,
+  zksyncSmartAccountClient: undefined,
   smartAccountReady: false,
 });
 
@@ -37,7 +41,7 @@ export const SmartAccountProvider = ({
 }) => {
   // Get a list of all of the wallets (EOAs) the user has connected to your site
   const { wallets } = useWallets();
-  const {ready} = usePrivy();
+  const {ready, signTypedData, signMessage} = usePrivy();
   // Find the embedded wallet by finding the entry in the list with a `walletClientType` of 'privy'
   const embeddedWallet = wallets.find(
     (wallet) => wallet.walletClientType === "privy"
@@ -49,6 +53,7 @@ export const SmartAccountProvider = ({
     | WalletClient<CustomTransport, Chain, Account>
     | undefined
   >();
+  const [zksyncSmartAccountClient, setZksyncSmartAccountClient] = useState<ZksyncSmartAccountClient | undefined>();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
     `0x${string}` | undefined
   >();
@@ -60,7 +65,7 @@ export const SmartAccountProvider = ({
 
   useEffect(() => {
     // Creates a smart account given a Privy `ConnectedWallet` object representing
-    // the  user's EOA.
+    // the user's EOA.
     const createSmartWallet = async (eoa: ConnectedWallet) => {
       setEoa(eoa);
 
@@ -73,6 +78,14 @@ export const SmartAccountProvider = ({
 
       const smartAccountAddress = await deployAccount(smartAccountClient);
 
+      const zksyncSmartAccountClient = createSmartAccountClient({
+        address: smartAccountAddress,
+        validatorAddress: VALIDATOR_ADDRESS,
+        signMessage: signMessage,
+        signTypedData: signTypedData
+      }); 
+
+      setZksyncSmartAccountClient(zksyncSmartAccountClient);
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountAddress);
       setSmartAccountReady(true);
@@ -87,6 +100,7 @@ export const SmartAccountProvider = ({
         smartAccountReady: smartAccountReady,
         smartAccountClient: smartAccountClient,
         smartAccountAddress: smartAccountAddress,
+        zksyncSmartAccountClient: zksyncSmartAccountClient,
         eoa: eoa,
       }}
     >

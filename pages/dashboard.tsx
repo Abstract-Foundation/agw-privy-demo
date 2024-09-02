@@ -20,7 +20,7 @@ import {
   parseAbiParameters,
 } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { getGeneralPaymasterInput } from "viem/zksync";
+import { getGeneralPaymasterInput, ZksyncTransactionSerializableEIP712 } from "viem/zksync";
 import { serializeEip712 } from "zksync-ethers/build/utils";
 import { EIP712Signer, utils, types } from "zksync-ethers";
 
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { ready, authenticated, user, logout, signTypedData } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
-  const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
+  const { smartAccountAddress, smartAccountClient, eoa, zksyncSmartAccountClient } = useSmartAccount();
 
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function DashboardPage() {
     }
   }, [ready, authenticated, router]);
 
-  const isLoading = !smartAccountAddress || !smartAccountClient;
+  const isLoading = !smartAccountAddress || !smartAccountClient || !zksyncSmartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
   const uiConfig = {
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
-    if (!smartAccountClient || !smartAccountAddress) return;
+    if (!smartAccountClient || !smartAccountAddress || !zksyncSmartAccountClient) return;
 
     // Store a state to disable the mint button while mint is in progress
     setIsMinting(true);
@@ -81,68 +81,23 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      const tx = {
+      const parsedTx = {
+        type: "eip712",
+        chainId: abstractTestnet.id,
         from: smartAccountAddress,
         to: NFT_ADDRESS,
-        data: mintData,
+        gas: gasLimit,
+        gasPerPubdata: 50_000n,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
+        paymaster: NFT_PAYMASTER_ADDRESS,
         nonce: nonce,
-        gasLimit: gasLimit.toString(),
-        gasPrice: gasPrice.toString(),
-        chainId: abstractTestnet.id,
-        value: 0,
-        type: 113,
-        customData: {
-          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
-          paymasterParams: {
-            paymaster: NFT_PAYMASTER_ADDRESS,
-            paymasterInput: paymasterInput,
-          },
-        } as types.Eip712Meta,
-      };
-      const signedTxHash = EIP712Signer.getSignedDigest(tx);
-
-      const domain = {
-        name: "zkSync",
-        version: "2",
-        chainId: abstractTestnet.id,
-        verifyingContract: VALIDATOR_ADDRESS,
-      };
-
-      const types = {
-        SignMessage: [
-          { name: "details", type: "string" },
-          { name: "hash", type: "bytes32" },
-        ],
-      };
-
-      const typedData = {
-        types,
-        domain,
-        primaryType: "SignMessage",
-        message: {
-          details: "You are signing a hash of your transaction",
-          hash: signedTxHash,
-        },
-      };
-
-      const rawSignature = await signTypedData(typedData, uiConfig);
-
-      const signature = encodeAbiParameters(
-        parseAbiParameters(["bytes", "address", "bytes[]"]),
-        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
-      );
-
-      const serializedTx = serializeEip712({
-        ...tx,
-        customData: {
-          ...tx.customData,
-          customSignature: signature,
-        },
-      });
-
-      const transactionHash = await publicClient.sendRawTransaction({
-        serializedTransaction: serializedTx as `0x${string}`,
-      });
+        value: BigInt(0),
+        data: mintData,
+        factoryDeps: [],
+        paymasterInput: paymasterInput,
+      } as ZksyncTransactionSerializableEIP712;
+      const transactionHash = await zksyncSmartAccountClient.sendTransaction(parsedTx);
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

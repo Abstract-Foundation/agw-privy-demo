@@ -21,7 +21,7 @@
     "react": "18.2.0",
     "react-dom": "^18.2.0",
     "react-toastify": "^10.0.5",
-    "viem": "^2.20.0",
+    "viem": "^2.21.1",
     "zksync-ethers": "^6.11.2"
   },
   "devDependencies": {
