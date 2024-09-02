@@ -42,8 +42,6 @@ export function createSmartAccountClient(
   const { address, validatorAddress, signMessage, signTypedData } = parameters
 
   const sign = async ({ hash }: { hash: Hex }) => {
-    console.log("Hash to sign: ", hash);
-    // The Privy EOA (who is the initial k1 signer) signs msgs/txs
     const result = await signMessage(hash);
     return result as Hex;
   };
@@ -91,9 +89,7 @@ export function createSmartAccountClient(
     };
 
     const eip712message = abstractTestnet.custom.getEip712Domain(transaction);
-    console.log(eip712message)
     const signedTxHash = hashTypedData(eip712message);
-    console.log("signedTxHash2", signedTxHash)
 
     const typedData = {
       types,

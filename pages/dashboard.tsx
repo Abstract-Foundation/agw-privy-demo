@@ -6,7 +6,6 @@ import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  VALIDATOR_ADDRESS,
   NFT_PAYMASTER_ADDRESS,
 } from "../lib/constants";
 import { encodeFunctionData } from "viem";
@@ -16,19 +15,15 @@ import { Alert } from "../components/AlertWithLink";
 import {
   createPublicClient,
   http,
-  encodeAbiParameters,
-  parseAbiParameters,
 } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { getGeneralPaymasterInput, ZksyncTransactionSerializableEIP712 } from "viem/zksync";
-import { serializeEip712 } from "zksync-ethers/build/utils";
-import { EIP712Signer, utils, types } from "zksync-ethers";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout, signTypedData } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
-  const { smartAccountAddress, smartAccountClient, eoa, zksyncSmartAccountClient } = useSmartAccount();
+  const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
@@ -37,15 +32,8 @@ export default function DashboardPage() {
     }
   }, [ready, authenticated, router]);
 
-  const isLoading = !smartAccountAddress || !smartAccountClient || !zksyncSmartAccountClient;
+  const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
-
-  const uiConfig = {
-    title: "Mint an NFT",
-    description:
-      "You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.",
-    buttonText: "Mint NFT",
-  };
 
   const publicClient = createPublicClient({
     chain: abstractTestnet,
@@ -54,7 +42,7 @@ export default function DashboardPage() {
 
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
-    if (!smartAccountClient || !smartAccountAddress || !zksyncSmartAccountClient) return;
+    if (!smartAccountClient || !smartAccountAddress) return;
 
     // Store a state to disable the mint button while mint is in progress
     setIsMinting(true);
@@ -81,7 +69,7 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      const parsedTx = {
+      const transaction = {
         type: "eip712",
         chainId: abstractTestnet.id,
         from: smartAccountAddress,
@@ -94,10 +82,9 @@ export default function DashboardPage() {
         nonce: nonce,
         value: BigInt(0),
         data: mintData,
-        factoryDeps: [],
         paymasterInput: paymasterInput,
       } as ZksyncTransactionSerializableEIP712;
-      const transactionHash = await zksyncSmartAccountClient.sendTransaction(parsedTx);
+      const transactionHash = await smartAccountClient.sendTransaction(transaction);
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

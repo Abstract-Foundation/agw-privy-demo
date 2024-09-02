@@ -13,11 +13,10 @@ interface SmartAccountInterface {
   eoa: ConnectedWallet | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
-    | WalletClient<CustomTransport, Chain, Account>
+    | ZksyncSmartAccountClient
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
-  zksyncSmartAccountClient: ZksyncSmartAccountClient | undefined;
   /** Boolean to indicate whether the smart account state has initialized */
   smartAccountReady: boolean;
 }
@@ -26,7 +25,6 @@ const SmartAccountContext = React.createContext<SmartAccountInterface>({
   eoa: undefined,
   smartAccountClient: undefined,
   smartAccountAddress: undefined,
-  zksyncSmartAccountClient: undefined,
   smartAccountReady: false,
 });
 
@@ -50,10 +48,9 @@ export const SmartAccountProvider = ({
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
   const [smartAccountClient, setSmartAccountClient] = useState<
-    | WalletClient<CustomTransport, Chain, Account>
+    | ZksyncSmartAccountClient
     | undefined
   >();
-  const [zksyncSmartAccountClient, setZksyncSmartAccountClient] = useState<ZksyncSmartAccountClient | undefined>();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
     `0x${string}` | undefined
   >();
@@ -70,22 +67,21 @@ export const SmartAccountProvider = ({
       setEoa(eoa);
 
       const eip1193provider = await eoa.getEthereumProvider();
-      const smartAccountClient = createWalletClient({
+      const embeddedWalletClient = createWalletClient({
         account: eoa.address as `0x${string}`,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
       }).extend(eip712WalletActions());
 
-      const smartAccountAddress = await deployAccount(smartAccountClient);
+      const smartAccountAddress = await deployAccount(embeddedWalletClient);
 
-      const zksyncSmartAccountClient = createSmartAccountClient({
+      const smartAccountClient = createSmartAccountClient({
         address: smartAccountAddress,
         validatorAddress: VALIDATOR_ADDRESS,
         signMessage: signMessage,
         signTypedData: signTypedData
       }); 
 
-      setZksyncSmartAccountClient(zksyncSmartAccountClient);
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountAddress);
       setSmartAccountReady(true);
@@ -100,7 +96,6 @@ export const SmartAccountProvider = ({
         smartAccountReady: smartAccountReady,
         smartAccountClient: smartAccountClient,
         smartAccountAddress: smartAccountAddress,
-        zksyncSmartAccountClient: zksyncSmartAccountClient,
         eoa: eoa,
       }}
     >
