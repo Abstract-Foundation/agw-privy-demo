@@ -82,7 +82,7 @@ export default function DashboardPage() {
         data: mintData,
         paymasterInput: paymasterInput,
       } as ZksyncTransactionSerializableEIP712;
-      const transactionHash = await smartAccountClient.sendTransaction(transaction);
+      const transactionHash = await smartAccountClient.sendAbstractTransaction(transaction);
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

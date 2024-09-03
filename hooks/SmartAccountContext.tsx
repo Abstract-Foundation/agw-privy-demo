@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, EIP1193Provider } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { eip712WalletActions } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
-import { AbstractSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
+// import { AbstractSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
+import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient2";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -13,7 +14,7 @@ interface SmartAccountInterface {
   eoa: ConnectedWallet | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
-    | AbstractSmartAccountClient
+    | AbstractClient
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
@@ -48,7 +49,7 @@ export const SmartAccountProvider = ({
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
   const [smartAccountClient, setSmartAccountClient] = useState<
-    | AbstractSmartAccountClient
+    | AbstractClient
     | undefined
   >();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
@@ -75,12 +76,17 @@ export const SmartAccountProvider = ({
 
       const smartAccountAddress = await deployAccount(embeddedWalletClient);
 
-      const smartAccountClient = createSmartAccountClient({
+      // const smartAccountClient = createSmartAccountClient({
+      //   address: smartAccountAddress,
+      //   validatorAddress: VALIDATOR_ADDRESS,
+      //   privySignMessage: signMessage,
+      //   privySignTypedData: signTypedData
+      // }); 
+      const smartAccountClient = createAbstractClient({
         address: smartAccountAddress,
         validatorAddress: VALIDATOR_ADDRESS,
-        privySignMessage: signMessage,
-        privySignTypedData: signTypedData
-      }); 
+        eip1193Provider: eip1193provider as EIP1193Provider
+      })
 
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountAddress);
