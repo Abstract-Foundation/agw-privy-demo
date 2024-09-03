@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { Account, Chain, createWalletClient, custom, CustomTransport, WalletClient } from "viem";
+import { createWalletClient, custom } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { eip712WalletActions } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
