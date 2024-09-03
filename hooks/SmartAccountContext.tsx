@@ -4,7 +4,7 @@ import { createWalletClient, custom } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { eip712WalletActions } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
-import { ZksyncSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
+import { AbstractSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
 
 /** Interface returned by custom `useSmartAccount` hook */
@@ -13,7 +13,7 @@ interface SmartAccountInterface {
   eoa: ConnectedWallet | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
-    | ZksyncSmartAccountClient
+    | AbstractSmartAccountClient
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
@@ -48,7 +48,7 @@ export const SmartAccountProvider = ({
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
   const [smartAccountClient, setSmartAccountClient] = useState<
-    | ZksyncSmartAccountClient
+    | AbstractSmartAccountClient
     | undefined
   >();
   const [smartAccountAddress, setSmartAccountAddress] = useState<

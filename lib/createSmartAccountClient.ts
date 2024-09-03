@@ -18,7 +18,7 @@ import {
 } from 'viem/zksync';
 import { SignTypedDataParams, SignMessageModalUIOptions } from '@privy-io/react-auth';
 
-export type ZksyncSmartAccountClient = {
+export type AbstractSmartAccountClient = {
   address: Address;
   sign: (parameters: { hash: Hash }) => Promise<Hex>;
   signMessage: (parameters: { message: string | { raw: Uint8Array } }) => Promise<Hex>;
@@ -33,7 +33,7 @@ export type ZksyncSmartAccountClient = {
   source: 'smartAccountZksync';
 };
 
-type ToZksyncSmartAccountParameters = {
+type ToAbstractSmartAccountParameters = {
   address: Address;
   validatorAddress: `0x${string}`;
   privySignMessage: (message: string, uiOptions?: SignMessageModalUIOptions) => Promise<string>;
@@ -103,8 +103,8 @@ function convertToSignTypedDataParams<
 }
 
 export function createSmartAccountClient(
-  parameters: ToZksyncSmartAccountParameters
-): ZksyncSmartAccountClient {
+  parameters: ToAbstractSmartAccountParameters
+): AbstractSmartAccountClient {
   const { address, validatorAddress, privySignMessage, privySignTypedData } = parameters;
 
   const sign = async ({ hash }: { hash: Hash }): Promise<Hex> => {
@@ -138,6 +138,7 @@ export function createSmartAccountClient(
       ],
     };
 
+    // TODO: update viem to include the new domain
     const eip712message = abstractTestnet.custom.getEip712Domain(transaction);
     const signedTxHash = hashTypedData(eip712message);
 
@@ -153,7 +154,7 @@ export function createSmartAccountClient(
 
     const uiConfig = {
       title: "Sign Transaction",
-      description: "You are signing a ZkSync transaction.",
+      description: "You are signing an Abstract transaction.",
       buttonText: "Sign",
     };
     const rawSignature = await privySignTypedData(typedData, uiConfig);
