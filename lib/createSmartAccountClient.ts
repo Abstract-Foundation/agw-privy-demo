@@ -1,49 +1,44 @@
-import type {
+import {
   Address,
   Hash,
   Hex,
-} from 'viem';
-import {
-  bytesToHex,
-  createPublicClient,
-  encodeAbiParameters,
-  hashMessage,
-  hashTypedData,
-  http,
-  keccak256,
-  parseAbiParameters,
   TypedDataDefinition,
   TypedData,
-  TypedDataParameter
+  encodeAbiParameters,
+  hashTypedData,
+  parseAbiParameters,
+  createPublicClient,
+  TypedDataParameter,
+  http,
 } from 'viem';
-import {
-  toAccount
-} from 'viem/accounts';
 import { abstractTestnet } from "viem/chains";
 import {
   serializeTransaction,
   ZksyncTransactionSerializableEIP712,
-  ZksyncSmartAccount,
 } from 'viem/zksync';
 import { SignTypedDataParams, SignMessageModalUIOptions } from '@privy-io/react-auth';
 
-export type ZksyncSmartAccountClient = ZksyncSmartAccount & {
-  sendTransaction(transaction: ZksyncTransactionSerializableEIP712): Promise<`0x${string}`>;
-}
-
-type MessageTypeProperty = {
-  name: string;
-  type: string;
+export type ZksyncSmartAccountClient = {
+  address: Address;
+  sign: (parameters: { hash: Hash }) => Promise<Hex>;
+  signMessage: (parameters: { message: string | { raw: Uint8Array } }) => Promise<Hex>;
+  signTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<Hex>;
+  signTypedData: <
+    const typedData extends TypedData | Record<string, unknown>,
+    primaryType extends keyof typedData | 'EIP712Domain' = keyof typedData,
+  >(
+    parameters: TypedDataDefinition<typedData, primaryType>,
+  ) => Promise<Hex>;
+  sendTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<`0x${string}`>;
+  source: 'smartAccountZksync';
 };
 
-type ToSmartAccountParameters = {
-  /** Address of the deployed Account's Contract implementation. */
-  address: Address
-  validatorAddress: `0x${string}`
-  /** Function to sign a hash. */
-  privySignMessage: (message: string, uiOptions?: SignMessageModalUIOptions | undefined) => Promise<string>
-  privySignTypedData: (typedData: SignTypedDataParams, uiOptions?: SignMessageModalUIOptions | undefined) => Promise<string>
-}
+type ToZksyncSmartAccountParameters = {
+  address: Address;
+  validatorAddress: `0x${string}`;
+  privySignMessage: (message: string, uiOptions?: SignMessageModalUIOptions) => Promise<string>;
+  privySignTypedData: (typedData: SignTypedDataParams, uiOptions?: SignMessageModalUIOptions) => Promise<string>;
+};
 
 type MessageTypes = Record<string, { name: string; type: string }[]>
 
@@ -59,6 +54,11 @@ function convertBigIntToString(value: any): any {
   }
   return value;
 }
+
+type MessageTypeProperty = {
+  name: string;
+  type: string;
+};
 
 function convertToSignTypedDataParams<
   T extends TypedData | Record<string, unknown>,
@@ -103,47 +103,27 @@ function convertToSignTypedDataParams<
 }
 
 export function createSmartAccountClient(
-  parameters: ToSmartAccountParameters,
+  parameters: ToZksyncSmartAccountParameters
 ): ZksyncSmartAccountClient {
-  const { address, validatorAddress, privySignMessage, privySignTypedData } = parameters
+  const { address, validatorAddress, privySignMessage, privySignTypedData } = parameters;
 
-  const account = toAccount({
-    address,
-    async sign({ hash }: { hash: Hex }) {
-      return await privySignMessage(hash) as Hex;
-    },
-    async signMessage({ message }) {
-      let messageToSign: string
-      if (typeof message === 'string') {
-        messageToSign = message
-      } else if (typeof message === 'object' && 'raw' in message) {
-        if (typeof message.raw === 'string') {
-          messageToSign = message.raw
-        } else {
-          // Assuming ByteArray is Uint8Array or similar
-          messageToSign = bytesToHex(message.raw)
-        }
-      } else {
-        throw new Error('Invalid message format')
-      }
-      return await privySignMessage(messageToSign) as Hex
-    },
-    async signTransaction(transaction) {
-      const signableTransaction = {
-        ...transaction,
-      } as ZksyncTransactionSerializableEIP712
+  const sign = async ({ hash }: { hash: Hash }): Promise<Hex> => {
+    return await privySignMessage(hash) as Hex;
+  };
 
-      return serializeTransaction({
-        ...signableTransaction,
-        customSignature: await privySignMessage(keccak256(serializeTransaction(signableTransaction))) as Hex,
-      })
-    },
-    async signTypedData(typedData) {
-      return await privySignTypedData(convertToSignTypedDataParams(typedData)) as Hex;
-    },
-  })
+  const signMessage = async ({ message }: { message: string | { raw: Uint8Array } }): Promise<Hex> => {
+    let messageToSign: string;
+    if (typeof message === 'string') {
+      messageToSign = message;
+    } else if (typeof message === 'object' && 'raw' in message) {
+      messageToSign = new TextDecoder().decode(message.raw);
+    } else {
+      throw new Error('Invalid message format');
+    }
+    return await privySignMessage(messageToSign) as Hex;
+  };
 
-  const sendTransaction = async (transaction: ZksyncTransactionSerializableEIP712): Promise<`0x${string}`> => {
+  const signTransaction = async (transaction: ZksyncTransactionSerializableEIP712): Promise<Hex> => {
     const domain = {
       name: "zkSync",
       version: "2",
@@ -172,10 +152,9 @@ export function createSmartAccountClient(
     };
 
     const uiConfig = {
-      title: "Mint an NFT",
-      description:
-        "You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.",
-      buttonText: "Mint NFT",
+      title: "Sign Transaction",
+      description: "You are signing a ZkSync transaction.",
+      buttonText: "Sign",
     };
     const rawSignature = await privySignTypedData(typedData, uiConfig);
 
@@ -189,21 +168,40 @@ export function createSmartAccountClient(
       customSignature: signature,
     });
 
+    return serializedTx;
+  };
+
+  const signTypedData = async <
+    const typedData extends TypedData | Record<string, unknown>,
+    primaryType extends keyof typedData | 'EIP712Domain' = keyof typedData,
+  >(
+    parameters: TypedDataDefinition<typedData, primaryType>,
+  ): Promise<Hex> => {
+    return await privySignTypedData(convertToSignTypedDataParams(parameters)) as Hex;
+  };
+
+  const sendTransaction = async (transaction: ZksyncTransactionSerializableEIP712): Promise<`0x${string}`> => {
+    const serializedTx = await signTransaction(transaction);
+
     const publicClient = createPublicClient({
       chain: abstractTestnet,
       transport: http(),
     });
 
     const transactionHash = await publicClient.sendRawTransaction({
-      serializedTransaction: serializedTx as `0x${string}`,
+      serializedTransaction: serializedTx,
     });
 
     return transactionHash;
-  }
+  };
 
   return {
-    ...account,
+    address,
+    sign,
+    signMessage,
+    signTransaction,
+    signTypedData,
     sendTransaction,
     source: 'smartAccountZksync',
-  } as ZksyncSmartAccountClient
+  };
 }
