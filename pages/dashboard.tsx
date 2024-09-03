@@ -7,14 +7,17 @@ import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
   NFT_PAYMASTER_ADDRESS,
+  VALIDATOR_ADDRESS,
 } from "../lib/constants";
 import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import {
+  Address,
   createPublicClient,
   http,
+  TypedDataDefinition
 } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { getGeneralPaymasterInput, ZksyncTransactionSerializableEIP712 } from "viem/zksync";
@@ -54,7 +57,6 @@ export default function DashboardPage() {
         functionName: "mint",
         args: [smartAccountAddress, 1],
       });
-
       const nonce = await publicClient.getTransactionCount({
         address: smartAccountAddress,
       });
@@ -64,7 +66,6 @@ export default function DashboardPage() {
         to: NFT_ADDRESS,
         data: mintData,
       });
-
       const paymasterInput = getGeneralPaymasterInput({
         innerInput: "0x",
       });

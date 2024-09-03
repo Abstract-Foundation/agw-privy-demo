@@ -78,8 +78,8 @@ export const SmartAccountProvider = ({
       const smartAccountClient = createSmartAccountClient({
         address: smartAccountAddress,
         validatorAddress: VALIDATOR_ADDRESS,
-        signMessage: signMessage,
-        signTypedData: signTypedData
+        privySignMessage: signMessage,
+        privySignTypedData: signTypedData
       }); 
 
       setSmartAccountClient(smartAccountClient);
