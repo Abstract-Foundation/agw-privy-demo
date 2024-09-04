@@ -1,83 +1,54 @@
 import { 
-  createWalletClient, 
+  createWalletClient,
+  createClient,
   custom,
   http,
   Transport,
   Chain,
   Account,
   Hex,
-  WalletClient,
   EIP1193Provider,
   hashTypedData,
   encodeAbiParameters,
   parseAbiParameters,
   createPublicClient,
-  EIP1193RequestFn,
-  TransportConfig
+  SignMessageParameters,
+  SignTypedDataParameters,
+  Address,
+  Client,
+  JsonRpcAccount,
+  SignableMessage
 } from 'viem';
+import {
+  getChainId,
+  readContract,
+  signMessage,
+  signTypedData
+} from "viem/actions"
 import { RpcRequest } from 'viem/types/rpc';
 import { abstractTestnet } from 'viem/chains';
-import { ZksyncTransactionSerializableEIP712, serializeTransaction } from 'viem/zksync';
+import { ZksyncTransactionSerializableEIP712, serializeTransaction, eip712WalletActions } from 'viem/zksync';
 
-type CustomActions = {
+type AbstractClientConfig = {
+  smartAccountAddress: `0x${string}`;
+  signer: Hex;
+  validatorAddress: `0x${string}`;
+  eip1193Provider: EIP1193Provider;
+};
+
+type AbstractClientActions = {
   sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<`0x${string}`>;
   signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<Hex>;
-};
+  signMessage: (parameters: SignMessageParameters) => Promise<Hex>;
+  signTypedData: (parameters: SignTypedDataParameters) => Promise<Hex>;
+  sign: (parameters: SignMessageParameters) => Promise<Hex>;
+}
 
 export type AbstractClient<
   TTransport extends Transport = Transport,
   TChain extends Chain | undefined = Chain | undefined,
   TAccount extends Account | undefined = Account | undefined
-> = WalletClient<TTransport, TChain, TAccount> & CustomActions;
-
-type ToAbstractSmartAccountParameters = {
-  address: `0x${string}`;
-  validatorAddress: `0x${string}`;
-  eip1193Provider: EIP1193Provider;
-};
-
-type CustomTransportReturn = {
-  config: TransportConfig<'custom', EIP1193RequestFn>
-  request: EIP1193RequestFn
-  value?: Record<string, any>
-}
-
-// Extend the Transport type to include the request property
-type TransportWithRequest = Transport<'custom', EIP1193RequestFn> & {
-  (): CustomTransportReturn
-}
-
-function createCustomTransport(
-  eip1193Provider: EIP1193Provider,
-  validatorAddress: `0x${string}`
-): TransportWithRequest {
-  const standardTransport = custom(eip1193Provider) as TransportWithRequest;
-
-  return ((config) => {
-    console.log("config", config);
-    const transport = standardTransport(config);
-
-    return {
-      ...transport,
-      async request({ method, params }: RpcRequest) {
-        switch (method) {
-          case 'eth_sendTransaction':
-            if (Array.isArray(params) && params.length > 0 && isAbstractTransaction(params[0])) {
-              return sendAbstractTransaction(params[0] as ZksyncTransactionSerializableEIP712, transport.request, validatorAddress);
-            }
-            return transport.request({ method, params });
-          case 'eth_signTransaction':
-            if (Array.isArray(params) && params.length > 0 && isAbstractTransaction(params[0])) {
-              return signAbstractTransaction(params[0] as ZksyncTransactionSerializableEIP712, transport.request, validatorAddress);
-            }
-            return transport.request({ method, params });
-          default:
-            return transport.request({ method, params });
-        }
-      },
-    };
-  }) as TransportWithRequest;
-}
+> = Client<TTransport, TChain, TAccount> & AbstractClientActions;
 
 async function signAbstractTransaction(
   transaction: ZksyncTransactionSerializableEIP712, 
@@ -139,26 +110,65 @@ async function sendAbstractTransaction(
   return transactionHash;
 }
 
-export function createAbstractClient(
-  parameters: ToAbstractSmartAccountParameters
-): AbstractClient {
-  const { address, validatorAddress, eip1193Provider } = parameters;
+export function createAbstractClient<
+  TTransport extends Transport,
+  TAccount extends Account | Address | undefined = undefined
+>(
+  parameters: AbstractClientConfig
+): AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount> {
+  const { smartAccountAddress, validatorAddress, signer, eip1193Provider } = parameters;
+  const transport = custom(eip1193Provider);
 
-  const transport = createCustomTransport(eip1193Provider, validatorAddress);
-
-  return createWalletClient({
-    account: address,
+  const baseClient = createClient({
+    account: smartAccountAddress as any,
     chain: abstractTestnet,
     transport,
-  }).extend((client) => ({
-    sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      sendAbstractTransaction(transaction, transport({chain: abstractTestnet, pollingInterval: 4000}).request, validatorAddress),
-    signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      signAbstractTransaction(transaction, transport({chain: abstractTestnet, pollingInterval: 4000}).request, validatorAddress),
-  })) as AbstractClient;
-}
+  });
 
-function isAbstractTransaction(tx: unknown): tx is ZksyncTransactionSerializableEIP712 {
-  if (typeof tx !== 'object' || tx === null) return false;
-  return 'gasPerPubdata' in tx;
+  // Create a signer wallet client to handle actual signing
+  const signerWalletClient = createWalletClient({
+    account: signer,
+    chain: abstractTestnet,
+    transport: custom(eip1193Provider)
+  }).extend(eip712WalletActions());
+
+  // Create a wrapper for the request function that matches the expected type
+  const requestWrapper = (args: RpcRequest) => baseClient.request(args as any);
+
+  const abstractClient = baseClient.extend((client) => ({
+    sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
+      sendAbstractTransaction(transaction, requestWrapper, validatorAddress),
+    signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
+      signAbstractTransaction(transaction, requestWrapper, validatorAddress),
+    async signMessage(parameters: SignMessageParameters): Promise<Hex> {
+      let signableMessage: SignableMessage;
+
+      if (typeof parameters.message === 'string') {
+        signableMessage = parameters.message;
+      } else if (parameters.message && 'raw' in parameters.message) {
+        if (typeof parameters.message.raw === 'string') {
+          signableMessage = parameters.message.raw;
+        } else if (parameters.message.raw instanceof Uint8Array) {
+          signableMessage = { raw: parameters.message.raw };
+        } else {
+          throw new Error('Unsupported raw message format');
+        }
+      } else {
+        throw new Error('Unsupported message format');
+      }
+
+      return signMessage(signerWalletClient, {
+        account: signer,
+        message: signableMessage
+      });
+    },
+    async signTypedData(parameters: SignTypedDataParameters): Promise<Hex> {
+      return signerWalletClient.signTypedData(parameters);
+    },
+    async sign(parameters: SignMessageParameters): Promise<Hex> {
+      return signerWalletClient.signMessage(parameters);
+    }
+  }));
+
+  return abstractClient as AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount>;
 }

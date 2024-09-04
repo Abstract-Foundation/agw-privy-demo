@@ -72,20 +72,15 @@ export const SmartAccountProvider = ({
         account: eoa.address as `0x${string}`,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
-      }).extend(eip712WalletActions());
+      });
 
       const smartAccountAddress = await deployAccount(embeddedWalletClient);
 
-      // const smartAccountClient = createSmartAccountClient({
-      //   address: smartAccountAddress,
-      //   validatorAddress: VALIDATOR_ADDRESS,
-      //   privySignMessage: signMessage,
-      //   privySignTypedData: signTypedData
-      // }); 
       const smartAccountClient = createAbstractClient({
-        address: smartAccountAddress,
+        smartAccountAddress: smartAccountAddress,
+        signer: eoa.address as `0x${string}`,
         validatorAddress: VALIDATOR_ADDRESS,
-        eip1193Provider: eip1193provider as EIP1193Provider
+        eip1193Provider: eip1193provider as EIP1193Provider,
       })
 
       setSmartAccountClient(smartAccountClient);
