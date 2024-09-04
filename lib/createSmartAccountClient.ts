@@ -20,10 +20,7 @@ import {
   SignableMessage
 } from 'viem';
 import {
-  getChainId,
-  readContract,
   signMessage,
-  signTypedData
 } from "viem/actions"
 import { RpcRequest } from 'viem/types/rpc';
 import { abstractTestnet } from 'viem/chains';
