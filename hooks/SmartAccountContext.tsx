@@ -2,11 +2,9 @@ import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
 import { createWalletClient, custom, EIP1193Provider } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
-// import { AbstractSmartAccountClient, createSmartAccountClient } from '../lib/createSmartAccountClient';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
-import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient2";
+import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
