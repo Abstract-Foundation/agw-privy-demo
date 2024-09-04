@@ -22,9 +22,15 @@ import {
 import {
   signMessage,
 } from "viem/actions"
-import { RpcRequest } from 'viem/types/rpc';
 import { abstractTestnet } from 'viem/chains';
 import { ZksyncTransactionSerializableEIP712, serializeTransaction, eip712WalletActions } from 'viem/zksync';
+
+type RpcRequest = {
+  jsonrpc?: '2.0' | undefined
+  method: string
+  params?: any | undefined
+  id?: number | undefined
+}
 
 type AbstractClientConfig = {
   smartAccountAddress: `0x${string}`;
