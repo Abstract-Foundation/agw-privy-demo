@@ -76,7 +76,7 @@ export const SmartAccountProvider = ({
 
       const smartAccountClient = createAbstractClient({
         smartAccountAddress: smartAccountAddress,
-        signer: eoa.address as `0x${string}`,
+        signerAddress: eoa.address as `0x${string}`,
         validatorAddress: VALIDATOR_ADDRESS,
         eip1193Provider: eip1193provider as EIP1193Provider,
       })

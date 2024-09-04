@@ -34,7 +34,7 @@ type RpcRequest = {
 
 type AbstractClientConfig = {
   smartAccountAddress: `0x${string}`;
-  signer: Hex;
+  signerAddress: Hex;
   validatorAddress: `0x${string}`;
   eip1193Provider: EIP1193Provider;
 };
@@ -121,7 +121,7 @@ export function createAbstractClient<
 >(
   parameters: AbstractClientConfig
 ): AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount> {
-  const { smartAccountAddress, validatorAddress, signer, eip1193Provider } = parameters;
+  const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider } = parameters;
   const transport = custom(eip1193Provider);
 
   const baseClient = createClient({
@@ -132,7 +132,7 @@ export function createAbstractClient<
 
   // Create a signer wallet client to handle actual signing
   const signerWalletClient = createWalletClient({
-    account: signer,
+    account: signerAddress,
     chain: abstractTestnet,
     transport: custom(eip1193Provider)
   }).extend(eip712WalletActions());
@@ -142,9 +142,9 @@ export function createAbstractClient<
 
   const abstractClient = baseClient.extend(() => ({
     sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      sendAbstractTransaction(transaction, requestWrapper, validatorAddress, signer),
+      sendAbstractTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
     signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      signAbstractTransaction(transaction, requestWrapper, validatorAddress, signer),
+      signAbstractTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
     async signMessage(parameters: SignMessageParameters): Promise<Hex> {
       let signableMessage: SignableMessage;
 
@@ -163,7 +163,7 @@ export function createAbstractClient<
       }
 
       return signMessage(signerWalletClient, {
-        account: signer,
+        account: signerAddress,
         message: signableMessage
       });
     },
