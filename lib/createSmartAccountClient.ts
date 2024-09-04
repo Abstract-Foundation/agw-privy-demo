@@ -132,7 +132,7 @@ export function createAbstractClient<
   // Create a wrapper for the request function that matches the expected type
   const requestWrapper = (args: RpcRequest) => baseClient.request(args as any);
 
-  const abstractClient = baseClient.extend((client) => ({
+  const abstractClient = baseClient.extend(() => ({
     sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
       sendAbstractTransaction(transaction, requestWrapper, validatorAddress),
     signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
