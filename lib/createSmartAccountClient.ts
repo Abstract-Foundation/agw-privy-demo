@@ -57,6 +57,7 @@ async function signAbstractTransaction(
   transaction: ZksyncTransactionSerializableEIP712, 
   request: (args: RpcRequest) => Promise<unknown>,
   validatorAddress: `0x${string}`,
+  signerAddress: Hex,
 ): Promise<Hex> {
   const domain = {
     name: "zkSync",
@@ -84,7 +85,7 @@ async function signAbstractTransaction(
   };
   const rawSignature = await request({
     method: 'eth_signTypedData_v4',
-    params: [transaction.from, JSON.stringify(typedData)]
+    params: [signerAddress, JSON.stringify(typedData)]
   }) as Hex;
   const signature = encodeAbiParameters(
     parseAbiParameters(["bytes", "address", "bytes[]"]),
@@ -101,8 +102,9 @@ async function sendAbstractTransaction(
   transaction: ZksyncTransactionSerializableEIP712, 
   request: (args: RpcRequest) => Promise<unknown>,
   validatorAddress: `0x${string}`,
+  signerAddress: Hex,
 ): Promise<`0x${string}`> {
-  const serializedTx = await signAbstractTransaction(transaction, request, validatorAddress);
+  const serializedTx = await signAbstractTransaction(transaction, request, validatorAddress, signerAddress);
   const publicClient = createPublicClient({
     chain: abstractTestnet,
     transport: http(),
@@ -140,9 +142,9 @@ export function createAbstractClient<
 
   const abstractClient = baseClient.extend(() => ({
     sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      sendAbstractTransaction(transaction, requestWrapper, validatorAddress),
+      sendAbstractTransaction(transaction, requestWrapper, validatorAddress, signer),
     signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      signAbstractTransaction(transaction, requestWrapper, validatorAddress),
+      signAbstractTransaction(transaction, requestWrapper, validatorAddress, signer),
     async signMessage(parameters: SignMessageParameters): Promise<Hex> {
       let signableMessage: SignableMessage;
 
