@@ -6,7 +6,6 @@ import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  VALIDATOR_ADDRESS,
   NFT_PAYMASTER_ADDRESS,
 } from "../lib/constants";
 import { encodeFunctionData } from "viem";
@@ -16,17 +15,13 @@ import { Alert } from "../components/AlertWithLink";
 import {
   createPublicClient,
   http,
-  encodeAbiParameters,
-  parseAbiParameters,
 } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { getGeneralPaymasterInput } from "viem/zksync";
-import { serializeEip712 } from "zksync-ethers/build/utils";
-import { EIP712Signer, utils, types } from "zksync-ethers";
+import { getGeneralPaymasterInput, ZksyncTransactionSerializableEIP712 } from "viem/zksync";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout, signTypedData } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
@@ -39,13 +34,6 @@ export default function DashboardPage() {
 
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
-
-  const uiConfig = {
-    title: "Mint an NFT",
-    description:
-      "You are minting an NFT using your Abstract Global Wallet. Gas fees are sponsored by a paymaster.",
-    buttonText: "Mint NFT",
-  };
 
   const publicClient = createPublicClient({
     chain: abstractTestnet,
@@ -66,7 +54,6 @@ export default function DashboardPage() {
         functionName: "mint",
         args: [smartAccountAddress, 1],
       });
-
       const nonce = await publicClient.getTransactionCount({
         address: smartAccountAddress,
       });
@@ -76,73 +63,26 @@ export default function DashboardPage() {
         to: NFT_ADDRESS,
         data: mintData,
       });
-
       const paymasterInput = getGeneralPaymasterInput({
         innerInput: "0x",
       });
 
-      const tx = {
+      const transaction = {
+        type: "eip712",
+        chainId: abstractTestnet.id,
         from: smartAccountAddress,
         to: NFT_ADDRESS,
-        data: mintData,
+        gas: gasLimit,
+        gasPerPubdata: 50_000n,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
+        paymaster: NFT_PAYMASTER_ADDRESS,
         nonce: nonce,
-        gasLimit: gasLimit.toString(),
-        gasPrice: gasPrice.toString(),
-        chainId: abstractTestnet.id,
-        value: 0,
-        type: 113,
-        customData: {
-          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
-          paymasterParams: {
-            paymaster: NFT_PAYMASTER_ADDRESS,
-            paymasterInput: paymasterInput,
-          },
-        } as types.Eip712Meta,
-      };
-      const signedTxHash = EIP712Signer.getSignedDigest(tx);
-
-      const domain = {
-        name: "zkSync",
-        version: "2",
-        chainId: abstractTestnet.id,
-        verifyingContract: VALIDATOR_ADDRESS,
-      };
-
-      const types = {
-        SignMessage: [
-          { name: "details", type: "string" },
-          { name: "hash", type: "bytes32" },
-        ],
-      };
-
-      const typedData = {
-        types,
-        domain,
-        primaryType: "SignMessage",
-        message: {
-          details: "You are signing a hash of your transaction",
-          hash: signedTxHash,
-        },
-      };
-
-      const rawSignature = await signTypedData(typedData, uiConfig);
-
-      const signature = encodeAbiParameters(
-        parseAbiParameters(["bytes", "address", "bytes[]"]),
-        [rawSignature as `0x${string}`, VALIDATOR_ADDRESS, []]
-      );
-
-      const serializedTx = serializeEip712({
-        ...tx,
-        customData: {
-          ...tx.customData,
-          customSignature: signature,
-        },
-      });
-
-      const transactionHash = await publicClient.sendRawTransaction({
-        serializedTransaction: serializedTx as `0x${string}`,
-      });
+        value: BigInt(0),
+        data: mintData,
+        paymasterInput: paymasterInput,
+      } as ZksyncTransactionSerializableEIP712;
+      const transactionHash = await smartAccountClient.sendAbstractTransaction(transaction);
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

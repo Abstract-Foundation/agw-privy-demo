@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { Account, Chain, createWalletClient, custom, CustomTransport, WalletClient } from "viem";
+import { createWalletClient, custom, EIP1193Provider } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { eip712WalletActions, } from 'viem/zksync'
 import { deployAccount } from '../lib/deployAccount';
+import { VALIDATOR_ADDRESS } from '../lib/constants';
+import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -11,7 +12,7 @@ interface SmartAccountInterface {
   eoa: ConnectedWallet | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
-    | WalletClient<CustomTransport, Chain, Account>
+    | AbstractClient
     | undefined;
   /** Smart account address */
   smartAccountAddress: `0x${string}` | undefined;
@@ -37,7 +38,7 @@ export const SmartAccountProvider = ({
 }) => {
   // Get a list of all of the wallets (EOAs) the user has connected to your site
   const { wallets } = useWallets();
-  const {ready} = usePrivy();
+  const { ready } = usePrivy();
   // Find the embedded wallet by finding the entry in the list with a `walletClientType` of 'privy'
   const embeddedWallet = wallets.find(
     (wallet) => wallet.walletClientType === "privy"
@@ -46,7 +47,7 @@ export const SmartAccountProvider = ({
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
   const [smartAccountClient, setSmartAccountClient] = useState<
-    | WalletClient<CustomTransport, Chain, Account>
+    | AbstractClient
     | undefined
   >();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
@@ -60,18 +61,25 @@ export const SmartAccountProvider = ({
 
   useEffect(() => {
     // Creates a smart account given a Privy `ConnectedWallet` object representing
-    // the  user's EOA.
+    // the user's EOA.
     const createSmartWallet = async (eoa: ConnectedWallet) => {
       setEoa(eoa);
 
       const eip1193provider = await eoa.getEthereumProvider();
-      const smartAccountClient = createWalletClient({
+      const embeddedWalletClient = createWalletClient({
         account: eoa.address as `0x${string}`,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
-      }).extend(eip712WalletActions());
+      });
 
-      const smartAccountAddress = await deployAccount(smartAccountClient);
+      const smartAccountAddress = await deployAccount(embeddedWalletClient);
+
+      const smartAccountClient = createAbstractClient({
+        smartAccountAddress: smartAccountAddress,
+        signerAddress: eoa.address as `0x${string}`,
+        validatorAddress: VALIDATOR_ADDRESS,
+        eip1193Provider: eip1193provider as EIP1193Provider,
+      })
 
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountAddress);
