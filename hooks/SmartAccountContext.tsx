@@ -38,7 +38,7 @@ export const SmartAccountProvider = ({
 }) => {
   // Get a list of all of the wallets (EOAs) the user has connected to your site
   const { wallets } = useWallets();
-  const {ready, signTypedData, signMessage} = usePrivy();
+  const { ready } = usePrivy();
   // Find the embedded wallet by finding the entry in the list with a `walletClientType` of 'privy'
   const embeddedWallet = wallets.find(
     (wallet) => wallet.walletClientType === "privy"
