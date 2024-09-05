@@ -4,13 +4,10 @@ import {
   Client,
   WalletClient,
   Hex,
-  hashTypedData,
   encodeAbiParameters,
   parseAbiParameters,
-  serializeTransaction,
   ExactPartial,
   OneOf,
-  Address,
   SendTransactionRequest,
   SendTransactionParameters,
   SendTransactionReturnType,
@@ -18,7 +15,6 @@ import {
 } from "viem";
 import {
   abstractTestnet,
-  zksync
 } from "viem/chains";
 import {
   writeContract,
@@ -111,7 +107,7 @@ export function assertEip712Request(args: AssertEip712RequestParameters) {
 }
 
 export type AssertEip712RequestParameters = ExactPartial<
-  SendTransactionParameters<typeof zksync>
+  SendTransactionParameters<typeof abstractTestnet>
 >
 
 export async function signEip712Transaction<

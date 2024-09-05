@@ -12,12 +12,8 @@ import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import {
-  createPublicClient,
-  http,
-} from "viem";
 import { abstractTestnet } from "viem/chains";
-import { getGeneralPaymasterInput, ZksyncTransactionSerializableEIP712 } from "viem/zksync";
+import { getGeneralPaymasterInput } from "viem/zksync";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -35,11 +31,6 @@ export default function DashboardPage() {
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
-  const publicClient = createPublicClient({
-    chain: abstractTestnet,
-    transport: http(),
-  });
-
   const onMint = async () => {
     // The mint button is disabled if either of these are undefined
     if (!smartAccountClient || !smartAccountAddress) return;
@@ -54,15 +45,6 @@ export default function DashboardPage() {
         functionName: "mint",
         args: [smartAccountAddress, 1],
       });
-      const nonce = await publicClient.getTransactionCount({
-        address: smartAccountAddress,
-      });
-      const gasPrice = await publicClient.getGasPrice();
-      const gasLimit = await publicClient.estimateGas({
-        account: smartAccountAddress,
-        to: NFT_ADDRESS,
-        data: mintData,
-      });
       const paymasterInput = getGeneralPaymasterInput({
         innerInput: "0x",
       });
@@ -71,14 +53,9 @@ export default function DashboardPage() {
         account: smartAccountClient.account,
         chain: abstractTestnet,
         to: NFT_ADDRESS,
-        gas: gasLimit,
-        gasPerPubdata: 50_000n,
-        maxFeePerGas: gasPrice,
-        maxPriorityFeePerGas: gasPrice,
-        paymaster: NFT_PAYMASTER_ADDRESS,
-        nonce: nonce,
         value: BigInt(0),
         data: mintData,
+        paymaster: NFT_PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
       });
 
