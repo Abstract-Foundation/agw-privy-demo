@@ -40,8 +40,8 @@ type AbstractClientConfig = {
 };
 
 type AbstractClientActions = {
-  sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<`0x${string}`>;
-  signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<Hex>;
+  sendTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<`0x${string}`>;
+  signTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<Hex>;
   signMessage: (parameters: SignMessageParameters) => Promise<Hex>;
   signTypedData: (parameters: SignTypedDataParameters) => Promise<Hex>;
   sign: (parameters: SignMessageParameters) => Promise<Hex>;
@@ -53,7 +53,7 @@ export type AbstractClient<
   TAccount extends Account | undefined = Account | undefined
 > = Client<TTransport, TChain, TAccount> & AbstractClientActions;
 
-async function signAbstractTransaction(
+async function signTransaction(
   transaction: ZksyncTransactionSerializableEIP712, 
   request: (args: RpcRequest) => Promise<unknown>,
   validatorAddress: `0x${string}`,
@@ -104,13 +104,13 @@ async function signAbstractTransaction(
   return serializedTx;
 }
 
-async function sendAbstractTransaction(
+async function sendTransaction(
   transaction: ZksyncTransactionSerializableEIP712, 
   request: (args: RpcRequest) => Promise<unknown>,
   validatorAddress: `0x${string}`,
   signerAddress: Hex,
 ): Promise<`0x${string}`> {
-  const serializedTx = await signAbstractTransaction(transaction, request, validatorAddress, signerAddress);
+  const serializedTx = await signTransaction(transaction, request, validatorAddress, signerAddress);
   const publicClient = createPublicClient({
     chain: abstractTestnet,
     transport: http(),
@@ -147,10 +147,10 @@ export function createAbstractClient<
   const requestWrapper = (args: RpcRequest) => baseClient.request(args as any);
 
   const abstractClient = baseClient.extend(() => ({
-    sendAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      sendAbstractTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
-    signAbstractTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      signAbstractTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
+    sendTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
+      sendTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
+    signTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
+      signTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
     async signMessage(parameters: SignMessageParameters): Promise<Hex> {
       let signableMessage: SignableMessage;
 
