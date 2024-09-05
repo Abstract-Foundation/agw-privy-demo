@@ -10,8 +10,8 @@ import {
   Client,
 } from 'viem';
 import { abstractTestnet } from 'viem/chains';
-import { eip712WalletActions, Eip712WalletActions } from 'viem/zksync';
-import { customActions } from './actions';
+import { Eip712WalletActions } from 'viem/zksync';
+import { globalWalletActions } from './actions';
 
 type AbstractClientConfig = {
   smartAccountAddress: `0x${string}`;
@@ -29,6 +29,7 @@ export type AbstractClient<
   TAccount extends Account = Account
 > = Client<TTransport, TChain, TAccount> & AbstractClientActions<TChain>;
 
+// TODO: add parameter checking - smartAccountAddress should be valid
 export function createAbstractClient<
   TTransport extends Transport,
 >(
@@ -48,8 +49,8 @@ export function createAbstractClient<
     account: signerAddress,
     chain: abstractTestnet,
     transport: custom(eip1193Provider)
-  }).extend(eip712WalletActions());
+  });
 
-  const abstractClient = baseClient.extend(customActions(validatorAddress, signerWalletClient));
+  const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient));
   return abstractClient as AbstractClient<TTransport, typeof abstractTestnet>;
 }

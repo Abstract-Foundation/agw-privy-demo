@@ -162,7 +162,6 @@ export async function signEip712Transaction<
     account: signerClient.account!
   });
 
-  // This gets sent to the smart contract
   const signature = encodeAbiParameters(
     parseAbiParameters(["bytes", "address", "bytes[]"]),
     [rawSignature, validatorAddress, []]
@@ -227,6 +226,7 @@ export async function sendEip712Transaction<
       parameters: ['gas', 'nonce', 'fees'],
     } as any)
 
+    // TODO: make sure chain is Abstract or AbstractTestnet
     let chainId: number | undefined
     if (chain !== null) {
       chainId = await getAction(signerClient, getChainId, 'getChainId')({})
@@ -281,7 +281,7 @@ export async function sendTransaction<
   )
 }
 
-export function customActions<
+export function globalWalletActions<
   transport extends Transport,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,

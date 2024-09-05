@@ -53,7 +53,6 @@ export default function DashboardPage() {
         account: smartAccountClient.account,
         chain: abstractTestnet,
         to: NFT_ADDRESS,
-        value: BigInt(0),
         data: mintData,
         paymaster: NFT_PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
