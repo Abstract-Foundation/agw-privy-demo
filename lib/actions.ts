@@ -114,13 +114,6 @@ export type AssertEip712RequestParameters = ExactPartial<
   SendTransactionParameters<typeof zksync>
 >
 
-function bigintReplacer(_key: string, value: any) {
-  if (typeof value === 'bigint') {
-    return value.toString();
-  }
-  return value;
-}
-
 export async function signEip712Transaction<
   chain extends ChainEIP712 | undefined,
   account extends Account | undefined,
@@ -164,13 +157,13 @@ export async function signEip712Transaction<
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
-    from: account.address,
+    from: account.address,  // This is the AA wallet address
     type: 'eip712',
   })
 
   const rawSignature = await signTypedData(signerClient, {
     ...eip712Domain,
-    account: signerClient.account!,
+    account: signerClient.account!
   });
 
   // This gets sent to the smart contract

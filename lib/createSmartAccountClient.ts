@@ -23,15 +23,8 @@ import {
   signMessage,
 } from "viem/actions"
 import { abstractTestnet } from 'viem/chains';
-import { ZksyncTransactionSerializableEIP712, serializeTransaction, eip712WalletActions } from 'viem/zksync';
+import { ZksyncTransactionSerializableEIP712, serializeTransaction, eip712WalletActions, Eip712WalletActions } from 'viem/zksync';
 import { customActions } from './actions';
-
-type RpcRequest = {
-  jsonrpc?: '2.0' | undefined
-  method: string
-  params?: any | undefined
-  id?: number | undefined
-}
 
 type AbstractClientConfig = {
   smartAccountAddress: `0x${string}`;
@@ -40,87 +33,14 @@ type AbstractClientConfig = {
   eip1193Provider: EIP1193Provider;
 };
 
-type AbstractClientActions = {
-  sendTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<`0x${string}`>;
-  signTransaction: (transaction: ZksyncTransactionSerializableEIP712) => Promise<Hex>;
-  signMessage: (parameters: SignMessageParameters) => Promise<Hex>;
-  signTypedData: (parameters: SignTypedDataParameters) => Promise<Hex>;
-  sign: (parameters: SignMessageParameters) => Promise<Hex>;
-}
+type AbstractClientActions<TAccount extends Account, TChain extends Chain | undefined = Chain | undefined> = 
+  Eip712WalletActions<TChain, TAccount>;
 
 export type AbstractClient<
   TTransport extends Transport = Transport,
   TChain extends Chain | undefined = Chain | undefined,
-  TAccount extends Account | undefined = Account | undefined
-> = Client<TTransport, TChain, TAccount> & AbstractClientActions;
-
-async function signTransaction(
-  transaction: ZksyncTransactionSerializableEIP712, 
-  request: (args: RpcRequest) => Promise<unknown>,
-  validatorAddress: `0x${string}`,
-  signerAddress: Hex,
-): Promise<Hex> {
-  const domain = {
-    name: "zkSync",
-    version: "2",
-    chainId: abstractTestnet.id,
-    verifyingContract: validatorAddress,
-  };
-  const types = {
-    EIP712Domain: [
-      { name: "name", type: "string" },
-      { name: "version", type: "string" },
-      { name: "chainId", type: "uint256" },
-      { name: "verifyingContract", type: "address" }
-    ],
-    SignMessage: [
-      { name: "details", type: "string" },
-      { name: "hash", type: "bytes32" },
-    ],
-  };
-  // TODO: update viem to include the new domain
-  const eip712message = abstractTestnet.custom.getEip712Domain(transaction);
-  const signedTxHash = hashTypedData(eip712message);
-  const typedData = {
-    types,
-    domain,
-    primaryType: "SignMessage",
-    message: {
-      details: "You are signing a hash of your transaction",
-      hash: signedTxHash,
-    },
-  };
-  const rawSignature = await request({
-    method: 'eth_signTypedData_v4',
-    params: [signerAddress, JSON.stringify(typedData)]
-  }) as Hex;
-  const signature = encodeAbiParameters(
-    parseAbiParameters(["bytes", "address", "bytes[]"]),
-    [rawSignature, validatorAddress, []]
-  );
-  const serializedTx = serializeTransaction({
-    ...transaction,
-    customSignature: signature,
-  });
-  return serializedTx;
-}
-
-async function sendTransaction(
-  transaction: ZksyncTransactionSerializableEIP712, 
-  request: (args: RpcRequest) => Promise<unknown>,
-  validatorAddress: `0x${string}`,
-  signerAddress: Hex,
-): Promise<`0x${string}`> {
-  const serializedTx = await signTransaction(transaction, request, validatorAddress, signerAddress);
-  const publicClient = createPublicClient({
-    chain: abstractTestnet,
-    transport: http(),
-  });
-  const transactionHash = await publicClient.sendRawTransaction({
-    serializedTransaction: serializedTx,
-  });
-  return transactionHash;
-}
+  TAccount extends Account = Account
+> = Client<TTransport, TChain, TAccount> & AbstractClientActions<TAccount, TChain>;
 
 export function createAbstractClient<
   TTransport extends Transport,
@@ -145,5 +65,5 @@ export function createAbstractClient<
 
   const abstractClient = baseClient.extend(customActions(validatorAddress, signerWalletClient));
 
-  return abstractClient as AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount>;
+  return abstractClient as AbstractClient<TTransport, typeof abstractTestnet>;
 }

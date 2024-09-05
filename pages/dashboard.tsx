@@ -67,10 +67,9 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      const transaction = {
-        type: "eip712",
-        chainId: abstractTestnet.id,
-        from: smartAccountAddress,
+      const transactionHash = await smartAccountClient.sendTransaction({
+        account: smartAccountClient.account,
+        chain: abstractTestnet,
         to: NFT_ADDRESS,
         gas: gasLimit,
         gasPerPubdata: 50_000n,
@@ -81,8 +80,7 @@ export default function DashboardPage() {
         value: BigInt(0),
         data: mintData,
         paymasterInput: paymasterInput,
-      } as ZksyncTransactionSerializableEIP712;
-      const transactionHash = await smartAccountClient.sendTransaction(transaction);
+      });
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
