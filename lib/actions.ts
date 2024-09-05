@@ -14,47 +14,77 @@ import {
   SendTransactionRequest,
   SendTransactionParameters,
   SendTransactionReturnType,
+  Chain,
 } from "viem";
 import {
   abstractTestnet,
   zksync
 } from "viem/chains";
 import {
-  AccountNotFoundError
-} from "viem/errors/account";
-import {
   writeContract,
   signTransaction as signTransaction_,
+  sendTransaction as core_sendTransaction,
+  SendTransactionParameters as core_SendTransactionParameters,
   signTypedData,
-  getChainId
+  getChainId,
+  prepareTransactionRequest,
+  sendRawTransaction
 } from "viem/actions";
 import {
   parseAccount,
   assertRequest,
   getAction,
-  assertCurrentChain
+  assertCurrentChain,
+  getTransactionError,
+  GetTransactionErrorParameters
 } from "viem/utils"
 import {
   BaseError
-} from "viem/errors/base"
+} from "viem"
 import {
   ChainEIP712,
   Eip712WalletActions,
-  sendTransaction,
   deployContract,
   SignEip712TransactionReturnType,
   ZksyncTransactionRequest,
   ZksyncTransactionSerializable,
-  // ZksyncTransactionSerializableEIP712,
   SignTransactionParameters,
   SignTransactionReturnType,
   SignEip712TransactionParameters,
-  // signEip712Transaction
+  SendEip712TransactionParameters,
+  SendEip712TransactionReturnType,
 } from "viem/zksync";
-import {
-  InvalidEip712TransactionError
-} from "viem/zksync/errors/transaction"
 
+export class AccountNotFoundError extends BaseError {
+  constructor({ docsPath }: { docsPath?: string | undefined } = {}) {
+    super(
+      [
+        'Could not find an Account to execute with this Action.',
+        'Please provide an Account with the `account` argument on the Action, or by supplying an `account` to the Client.',
+      ].join('\n'),
+      {
+        docsPath,
+        docsSlug: 'account',
+        name: 'AccountNotFoundError',
+      },
+    )
+  }
+}
+
+export class InvalidEip712TransactionError extends BaseError {
+  constructor() {
+    super(
+      [
+        'Transaction is not an EIP712 transaction.',
+        '',
+        'Transaction must:',
+        '  - include `type: "eip712"`',
+        '  - include one of the following: `customSignature`, `paymaster`, `paymasterInput`, `gasPerPubdata`, `factoryDeps`',
+      ].join('\n'),
+      { name: 'InvalidEip712TransactionError' },
+    )
+  }
+}
 
 function isEIP712Transaction(
   transaction: ExactPartial<
@@ -84,13 +114,22 @@ export type AssertEip712RequestParameters = ExactPartial<
   SendTransactionParameters<typeof zksync>
 >
 
+function bigintReplacer(_key: string, value: any) {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  return value;
+}
+
 export async function signEip712Transaction<
   chain extends ChainEIP712 | undefined,
   account extends Account | undefined,
   chainOverride extends ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
+  signerClient: WalletClient<Transport, chain, account>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
+  validatorAddress: Hex,
 ): Promise<SignEip712TransactionReturnType> {
   const {
     account: account_ = client.account,
@@ -129,9 +168,11 @@ export async function signEip712Transaction<
     type: 'eip712',
   })
 
-  const customSignature = await signTypedData(client, {
+  console.log(JSON.stringify(eip712Domain, bigintReplacer))
+
+  const customSignature = await signTypedData(signerClient, {
     ...eip712Domain,
-    account,
+    account: signerClient.account!,
   })
 
   return chain?.serializers?.transaction(
@@ -151,27 +192,117 @@ export async function signTransaction<
   chainOverride extends ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
+  signerClient: WalletClient<Transport, chain, account>,
   args: SignTransactionParameters<chain, account, chainOverride>,
+  validatorAddress: Hex,
 ): Promise<SignTransactionReturnType> {
-  if (isEIP712Transaction(args)) return signEip712Transaction(client, args)
+  if (isEIP712Transaction(args)) return signEip712Transaction(client, signerClient, args, validatorAddress)
   return await signTransaction_(client, args as any)
 }
 
-export function customActions() {
-  return <
-    transport extends Transport,
-    chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-    account extends Account | undefined = Account | undefined,
-  >(
+export async function sendEip712Transaction<
+  chain extends ChainEIP712 | undefined,
+  account extends Account | undefined,
+  const request extends SendTransactionRequest<chain, chainOverride>,
+  chainOverride extends ChainEIP712 | undefined = undefined,
+>(
+  client: Client<Transport, chain, account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  parameters: SendEip712TransactionParameters<
+    chain,
+    account,
+    chainOverride,
+    request
+  >,
+): Promise<SendEip712TransactionReturnType> {
+  const { chain = client.chain } = parameters
+
+  if (!signerClient.account)
+    throw new AccountNotFoundError({
+      docsPath: '/docs/actions/wallet/sendTransaction',
+    })
+  const account = parseAccount(signerClient.account)
+
+  try {
+    assertEip712Request(parameters)
+
+    // Prepare the request for signing (assign appropriate fees, etc.)
+    const request = await prepareTransactionRequest(client, {
+      ...parameters,
+      nonceManager: account.nonceManager,
+      parameters: ['gas', 'nonce', 'fees'],
+    } as any)
+
+    let chainId: number | undefined
+    if (chain !== null) {
+      chainId = await getAction(signerClient, getChainId, 'getChainId')({})
+      assertCurrentChain({
+        currentChainId: chainId,
+        chain,
+      })
+    }
+
+    const serializedTransaction = await signTransaction(client, signerClient, {
+      ...request,
+      chainId,
+    } as any, "0x")
+
+    return await getAction(
+      client,
+      sendRawTransaction,
+      'sendRawTransaction',
+    )({
+      serializedTransaction,
+    })
+  } catch (err) {
+    throw getTransactionError(err as BaseError, {
+      ...(parameters as GetTransactionErrorParameters),
+      account,
+      chain: chain as Chain,
+    })
+  }
+}
+
+export async function sendTransaction<
+  chain extends ChainEIP712 | undefined,
+  account extends Account | undefined,
+  const request extends SendTransactionRequest<chain, chainOverride>,
+  chainOverride extends ChainEIP712 | undefined = undefined,
+>(
+  client: Client<Transport, chain, account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  parameters: SendTransactionParameters<chain, account, chainOverride, request>,
+): Promise<SendTransactionReturnType> {
+  if (isEIP712Transaction(parameters))
+    return sendEip712Transaction(
+      client,
+      signerClient,
+      parameters as SendEip712TransactionParameters,
+    )
+  return core_sendTransaction(
+    client,
+    parameters as core_SendTransactionParameters,
+  )
+}
+
+export function customActions<
+  transport extends Transport,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+>(
+  validatorAddress: Hex,
+  signerClient: WalletClient<transport, chain, account>,
+) {
+  return (
     client: Client<transport, chain, account>,
   ): Eip712WalletActions<chain, account> => ({
-    sendTransaction: (args) => sendTransaction(client, args),
-    signTransaction: (args) => signTransaction(client, args),
+    sendTransaction: (args) => sendTransaction(client, signerClient, args),
+    signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args),
     writeContract: (args) =>
       writeContract(
         Object.assign(client, {
-          sendTransaction: (args: any) => sendTransaction(client, args),
+          sendTransaction: (args: any) => sendTransaction(client, signerClient, args),
         }),
         args,
       ),

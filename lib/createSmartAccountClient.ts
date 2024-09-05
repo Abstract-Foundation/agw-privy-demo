@@ -124,15 +124,14 @@ async function sendTransaction(
 
 export function createAbstractClient<
   TTransport extends Transport,
-  TAccount extends Account | Address | undefined = undefined
 >(
   parameters: AbstractClientConfig
-): AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount> {
+): AbstractClient<TTransport, typeof abstractTestnet> {
   const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider } = parameters;
   const transport = custom(eip1193Provider);
 
   const baseClient = createClient({
-    account: smartAccountAddress as TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount,
+    account: smartAccountAddress,
     chain: abstractTestnet,
     transport,
   });
@@ -144,10 +143,7 @@ export function createAbstractClient<
     transport: custom(eip1193Provider)
   }).extend(eip712WalletActions());
 
-  // Create a wrapper for the request function that matches the expected type
-  const requestWrapper = (args: RpcRequest) => baseClient.request(args as any);
-
-  const abstractClient = baseClient.extend(customActions());
+  const abstractClient = baseClient.extend(customActions(validatorAddress, signerWalletClient));
 
   return abstractClient as AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount>;
 }
