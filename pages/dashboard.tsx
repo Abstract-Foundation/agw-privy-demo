@@ -49,6 +49,7 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
+      // TODO: figure out account hoisting
       const transactionHash = await smartAccountClient.sendTransaction({
         account: smartAccountClient.account,
         chain: abstractTestnet,
