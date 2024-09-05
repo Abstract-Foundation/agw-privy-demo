@@ -168,18 +168,22 @@ export async function signEip712Transaction<
     type: 'eip712',
   })
 
-  console.log(JSON.stringify(eip712Domain, bigintReplacer))
-
-  const customSignature = await signTypedData(signerClient, {
+  const rawSignature = await signTypedData(signerClient, {
     ...eip712Domain,
     account: signerClient.account!,
-  })
+  });
+
+  // This gets sent to the smart contract
+  const signature = encodeAbiParameters(
+    parseAbiParameters(["bytes", "address", "bytes[]"]),
+    [rawSignature, validatorAddress, []]
+  );
 
   return chain?.serializers?.transaction(
     {
       chainId,
       ...transaction,
-      customSignature,
+      customSignature: signature,
       type: 'eip712' as any,
     },
     { r: '0x0', s: '0x0', v: 0n },
@@ -214,6 +218,7 @@ export async function sendEip712Transaction<
     chainOverride,
     request
   >,
+  validatorAddress: Hex,
 ): Promise<SendEip712TransactionReturnType> {
   const { chain = client.chain } = parameters
 
@@ -245,7 +250,7 @@ export async function sendEip712Transaction<
     const serializedTransaction = await signTransaction(client, signerClient, {
       ...request,
       chainId,
-    } as any, "0x")
+    } as any, validatorAddress)
 
     return await getAction(
       client,
@@ -272,12 +277,14 @@ export async function sendTransaction<
   client: Client<Transport, chain, account>,
   signerClient: WalletClient<Transport, chain, account>,
   parameters: SendTransactionParameters<chain, account, chainOverride, request>,
+  validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
   if (isEIP712Transaction(parameters))
     return sendEip712Transaction(
       client,
       signerClient,
       parameters as SendEip712TransactionParameters,
+      validatorAddress,
     )
   return core_sendTransaction(
     client,
@@ -296,13 +303,13 @@ export function customActions<
   return (
     client: Client<transport, chain, account>,
   ): Eip712WalletActions<chain, account> => ({
-    sendTransaction: (args) => sendTransaction(client, signerClient, args),
+    sendTransaction: (args) => sendTransaction(client, signerClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args),
     writeContract: (args) =>
       writeContract(
         Object.assign(client, {
-          sendTransaction: (args: any) => sendTransaction(client, signerClient, args),
+          sendTransaction: (args: any) => sendTransaction(client, signerClient, args, validatorAddress),
         }),
         args,
       ),

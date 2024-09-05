@@ -5,6 +5,7 @@ import { abstractTestnet } from "viem/chains";
 import { deployAccount } from '../lib/deployAccount';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
 import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient";
+import {eip712WalletActions} from "viem/zksync";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -70,7 +71,7 @@ export const SmartAccountProvider = ({
         account: eoa.address as `0x${string}`,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
-      });
+      }).extend(eip712WalletActions());
 
       const smartAccountAddress = await deployAccount(embeddedWalletClient);
 
