@@ -24,6 +24,7 @@ import {
 } from "viem/actions"
 import { abstractTestnet } from 'viem/chains';
 import { ZksyncTransactionSerializableEIP712, serializeTransaction, eip712WalletActions } from 'viem/zksync';
+import { customActions } from './actions';
 
 type RpcRequest = {
   jsonrpc?: '2.0' | undefined
@@ -146,40 +147,7 @@ export function createAbstractClient<
   // Create a wrapper for the request function that matches the expected type
   const requestWrapper = (args: RpcRequest) => baseClient.request(args as any);
 
-  const abstractClient = baseClient.extend(() => ({
-    sendTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      sendTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
-    signTransaction: (transaction: ZksyncTransactionSerializableEIP712) => 
-      signTransaction(transaction, requestWrapper, validatorAddress, signerAddress),
-    async signMessage(parameters: SignMessageParameters): Promise<Hex> {
-      let signableMessage: SignableMessage;
-
-      if (typeof parameters.message === 'string') {
-        signableMessage = parameters.message;
-      } else if (parameters.message && 'raw' in parameters.message) {
-        if (typeof parameters.message.raw === 'string') {
-          signableMessage = parameters.message.raw;
-        } else if (parameters.message.raw instanceof Uint8Array) {
-          signableMessage = { raw: parameters.message.raw };
-        } else {
-          throw new Error('Unsupported raw message format');
-        }
-      } else {
-        throw new Error('Unsupported message format');
-      }
-
-      return signMessage(signerWalletClient, {
-        account: signerAddress,
-        message: signableMessage
-      });
-    },
-    async signTypedData(parameters: SignTypedDataParameters): Promise<Hex> {
-      return signerWalletClient.signTypedData(parameters);
-    },
-    async sign(parameters: SignMessageParameters): Promise<Hex> {
-      return signerWalletClient.signMessage(parameters);
-    }
-  }));
+  const abstractClient = baseClient.extend(customActions());
 
   return abstractClient as AbstractClient<TTransport, typeof abstractTestnet, TAccount extends Address ? JsonRpcAccount<TAccount> : TAccount>;
 }
