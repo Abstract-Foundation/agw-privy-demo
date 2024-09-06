@@ -23,7 +23,7 @@ import {
   SendTransactionParameters as core_SendTransactionParameters,
   signTypedData,
   getChainId,
-  prepareTransactionRequest,
+  // prepareTransactionRequest,
   sendRawTransaction
 } from "viem/actions";
 import {
@@ -50,6 +50,7 @@ import {
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
 } from "viem/zksync";
+import {prepareTransactionRequest} from "./prepareTransaction";
 
 export class AccountNotFoundError extends BaseError {
   constructor({ docsPath }: { docsPath?: string | undefined } = {}) {
