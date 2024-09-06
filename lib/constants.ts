@@ -1,9 +1,9 @@
 // AA smart contract deployment
 export const SMART_ACCOUNT_FACTORY_ADDRESS =
-  "0x00a24Fe53755256c07E6e36Ffff1Efa53F9f7C06";
+  "0xe86Bf72715dF28a0b7c3C8F596E7fE05a22A139c";
 
 // AA wallet validator contract deployment
-export const VALIDATOR_ADDRESS = "0xF42488Ef821f39858AB71a70F8C1485a2A45AE7A";
+export const VALIDATOR_ADDRESS = "0x8d9A95c8Dc4736d76a8418A282274f94410D3933";
 
 // Sample NFT deployed to Abstract Testnet
 export const NFT_ADDRESS = "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA";
