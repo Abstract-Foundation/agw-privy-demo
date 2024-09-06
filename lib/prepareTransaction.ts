@@ -11,7 +11,6 @@ import {
   TransactionRequestEIP4844,
   TransactionRequestEIP7702,
   TransactionRequestLegacy,
-  TransactionSerializable,
   DeriveAccount,
   DeriveChain,
   GetChainParameter,
@@ -24,9 +23,6 @@ import {
   FormattedTransactionRequest,
   NonceManager,
   SendTransactionParameters,
-  FeeValuesType,
-  EstimateFeesPerGasParameters,
-  EstimateFeesPerGasReturnType,
   BaseError,
   formatGwei,
   PublicClient
@@ -42,10 +38,8 @@ import {
   EstimateGasParameters,
   estimateGas,
   GetBlockErrorType,
-  getBlock as getBlock_,
   GetTransactionCountErrorType,
   getTransactionCount,
-  estimateFeesPerGas,
   getChainId as getChainId_
 } from "viem/actions";
 
@@ -58,9 +52,14 @@ import {
   AssertRequestErrorType,
   assertRequest,
   GetTransactionType,
-  getTransactionType,
   parseAccount,
 } from "viem/utils";
+
+import {
+  estimateFee,
+  EstimateFeeParameters,
+  ChainEIP712
+} from "viem/zksync"
 
 export type IsUndefined<T> = [undefined] extends [T] ? true : false
 
@@ -304,22 +303,10 @@ export async function prepareTransactionRequest<
     nonce,
     nonceManager,
     parameters = defaultParameters,
-    type,
   } = args
   const smartAccount = account_ ? parseAccount(account_) : undefined
 
   const request = { ...args, ...(smartAccount ? { from: smartAccount?.address } : {}) }
-
-  let block: Block | undefined
-  async function getBlock(): Promise<Block> {
-    if (block) return block
-    block = await getAction(
-      client,
-      getBlock_,
-      'getBlock',
-    )({ blockTag: 'latest' })
-    return block
-  }
 
   let chainId: number | undefined
   async function getChainId(): Promise<number> {
@@ -350,74 +337,38 @@ export async function prepareTransactionRequest<
         address: smartAccount.address,
         blockTag: 'pending',
       })
-      console.log(request.nonce)
-    }
-  }
-
-  if (
-    (parameters.includes('fees') || parameters.includes('type')) &&
-    typeof type === 'undefined'
-  ) {
-    try {
-      request.type = getTransactionType(
-        request as TransactionSerializable,
-      ) as any
-    } catch {
-      // infer type from block
-      const block = await getBlock()
-      request.type =
-        typeof block?.baseFeePerGas === 'bigint' ? 'eip1559' : 'legacy'
     }
   }
 
   if (parameters.includes('fees')) {
-    // TODO(4844): derive blob base fees once https://github.com/ethereum/execution-apis/pull/486 is merged.
+    if (
+      typeof request.maxFeePerGas === 'undefined' ||
+      typeof request.maxPriorityFeePerGas === 'undefined'
+    ) {
+      const estimateFeeRequest: EstimateFeeParameters<chain, account | undefined, ChainEIP712> = {
+        account: smartAccount,
+        to: request.to,
+        value: request.value,
+        data: request.data,
+        gas: request.gas,
+        nonce: request.nonce,
+        chainId: request.chainId,
+        authorizationList: []
+      };
+      const { maxFeePerGas, maxPriorityFeePerGas } =
+        await estimateFee(publicClient, estimateFeeRequest)
 
-    if (request.type !== 'legacy' && request.type !== 'eip2930') {
-      // EIP-1559 fees
       if (
-        typeof request.maxFeePerGas === 'undefined' ||
-        typeof request.maxPriorityFeePerGas === 'undefined'
-      ) {
-        const block = await getBlock()
-        const { maxFeePerGas, maxPriorityFeePerGas } =
-          await estimateFeesPerGas(client, {
-            block: block as Block,
-            chain,
-            request: request as PrepareTransactionRequestParameters,
-          })
-
-        if (
-          typeof args.maxPriorityFeePerGas === 'undefined' &&
-          args.maxFeePerGas &&
-          args.maxFeePerGas < maxPriorityFeePerGas
-        )
-          throw new MaxFeePerGasTooLowError({
-            maxPriorityFeePerGas,
-          })
-
-        request.maxPriorityFeePerGas = maxPriorityFeePerGas
-        request.maxFeePerGas = maxFeePerGas
-      }
-    } else {
-      // Legacy fees
-      if (
-        typeof args.maxFeePerGas !== 'undefined' ||
-        typeof args.maxPriorityFeePerGas !== 'undefined'
+        typeof args.maxPriorityFeePerGas === 'undefined' &&
+        args.maxFeePerGas &&
+        args.maxFeePerGas < maxPriorityFeePerGas
       )
-        throw new Eip1559FeesNotSupportedError()
+        throw new MaxFeePerGasTooLowError({
+          maxPriorityFeePerGas,
+        })
 
-      const block = await getBlock()
-      const { gasPrice: gasPrice_ } = await estimateFeesPerGas(
-        client,
-        {
-          block: block as Block,
-          chain,
-          request: request as PrepareTransactionRequestParameters,
-          type: 'legacy',
-        },
-      )
-      request.gasPrice = gasPrice_
+      request.maxPriorityFeePerGas = maxPriorityFeePerGas
+      request.maxFeePerGas = maxFeePerGas
     }
   }
 

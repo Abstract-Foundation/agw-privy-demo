@@ -73,21 +73,21 @@ export const SmartAccountProvider = ({
         transport: custom(eip1193provider),
       }).extend(eip712WalletActions());
 
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
-      const address = getAddress(accounts[0]!);
-      const browserWalletClient = createWalletClient({
-        account: address,
-        chain: abstractTestnet,
-        transport: custom(window.ethereum),
-      }).extend(eip712WalletActions());
+      // const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      // const address = getAddress(accounts[0]!);
+      // const browserWalletClient = createWalletClient({
+      //   account: address,
+      //   chain: abstractTestnet,
+      //   transport: custom(window.ethereum),
+      // }).extend(eip712WalletActions());
 
       const smartAccountAddress = await deployAccount(embeddedWalletClient);
 
       const smartAccountClient = createAbstractClient({
         smartAccountAddress: smartAccountAddress,
-        signerAddress: address as `0x${string}`,
+        signerAddress: eoa.address as `0x${string}`,
         validatorAddress: VALIDATOR_ADDRESS,
-        eip1193Provider: window.ethereum as EIP1193Provider,
+        eip1193Provider: eip1193provider as EIP1193Provider,
       })
 
       setSmartAccountClient(smartAccountClient);

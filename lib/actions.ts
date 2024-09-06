@@ -227,7 +227,6 @@ export async function sendEip712Transaction<
     assertEip712Request(parameters)
 
     // Prepare the request for signing (assign appropriate fees, etc.)
-    // TODO: fix nonce and fee population
     const request = await prepareTransactionRequest(client, publicClient, {
       ...parameters,
       parameters: ['gas', 'nonce', 'fees'],
