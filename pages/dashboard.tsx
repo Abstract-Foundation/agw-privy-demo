@@ -51,8 +51,8 @@ export default function DashboardPage() {
 
       // TODO: figure out account hoisting
       const transactionHash = await smartAccountClient.sendTransaction({
-        account: smartAccountClient.account,
-        chain: abstractTestnet,
+        // account: smartAccountClient.account,
+        // chain: abstractTestnet,
         to: NFT_ADDRESS,
         data: mintData,
         paymaster: NFT_PAYMASTER_ADDRESS,

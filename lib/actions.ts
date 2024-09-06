@@ -115,9 +115,9 @@ export type AssertEip712RequestParameters = ExactPartial<
 >
 
 export async function signEip712Transaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
-  chainOverride extends ChainEIP712 | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -187,9 +187,9 @@ export async function signEip712Transaction<
 }
 
 export async function signTransaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
-  chainOverride extends ChainEIP712 | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -201,10 +201,10 @@ export async function signTransaction<
 }
 
 export async function sendEip712Transaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
-  chainOverride extends ChainEIP712 | undefined = undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -269,10 +269,10 @@ export async function sendEip712Transaction<
 }
 
 export async function sendTransaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
-  chainOverride extends ChainEIP712 | undefined = undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -294,7 +294,7 @@ export async function sendTransaction<
 
 export function globalWalletActions<
   transport extends Transport,
-  chain extends ChainEIP712,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
 >(
   validatorAddress: Hex,

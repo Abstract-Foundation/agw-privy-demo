@@ -119,10 +119,10 @@ type ParameterTypeToParameters<
   : parameterType
 
 export type PrepareTransactionRequestRequest<
-  chain extends Chain | undefined = Chain | undefined,
-  chainOverride extends Chain | undefined = Chain | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   ///
-  _derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
+  _derivedChain extends ChainEIP712 | undefined = DeriveChain<chain, chainOverride>,
 > = UnionOmit<FormattedTransactionRequest<_derivedChain>, 'from'> &
   GetTransactionRequestKzgParameter & {
     /**
@@ -138,9 +138,9 @@ export type PrepareTransactionRequestRequest<
   }
 
 export type PrepareTransactionRequestParameters<
-  chain extends Chain | undefined = Chain | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
-  chainOverride extends Chain | undefined = Chain | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   accountOverride extends Account | Address | undefined =
     | Account
     | Address
@@ -155,9 +155,9 @@ export type PrepareTransactionRequestParameters<
   GetTransactionRequestKzgParameter<request> & { chainId?: number | undefined }
 
 export type PrepareTransactionRequestReturnType<
-  chain extends Chain | undefined = Chain | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
-  chainOverride extends Chain | undefined = Chain | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   accountOverride extends Account | Address | undefined =
     | Account
     | Address
@@ -256,11 +256,11 @@ export type PrepareTransactionRequestErrorType =
  * })
  */
 export async function prepareTransactionRequest<
-  chain extends Chain,
-  account extends Account | undefined,
   const request extends PrepareTransactionRequestRequest<chain, chainOverride>,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
   accountOverride extends Account | Address | undefined = undefined,
-  chainOverride extends Chain | undefined = undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, chain, account>,
   publicClient: PublicClient<Transport, chain>,

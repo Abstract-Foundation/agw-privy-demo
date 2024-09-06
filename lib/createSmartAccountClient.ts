@@ -3,7 +3,6 @@ import {
   createClient,
   custom,
   Transport,
-  Chain,
   Account,
   Hex,
   EIP1193Provider,
@@ -12,7 +11,7 @@ import {
 import { ChainEIP712, Eip712WalletActions } from 'viem/zksync';
 import { globalWalletActions } from './actions';
 
-type AbstractClientConfig = {
+type CreateAbstractClientParameters = {
   smartAccountAddress: Hex;
   signerAddress: Hex;
   validatorAddress: Hex;
@@ -20,20 +19,18 @@ type AbstractClientConfig = {
   chain: ChainEIP712;
 };
 
-type AbstractClientActions<TChain extends Chain | undefined = Chain | undefined> = 
-  Eip712WalletActions<TChain>;
+type AbstractClientActions = Eip712WalletActions<ChainEIP712, Account>;
 
 export type AbstractClient<
   TTransport extends Transport = Transport,
-  TChain extends Chain | undefined = Chain | undefined,
   TAccount extends Account = Account
-> = Client<TTransport, TChain, TAccount> & AbstractClientActions<TChain>;
+> = Client<TTransport, ChainEIP712, TAccount> & AbstractClientActions;
 
 export function createAbstractClient<
   TTransport extends Transport,
 >(
-  parameters: AbstractClientConfig
-): AbstractClient<TTransport, ChainEIP712> {
+  parameters: CreateAbstractClientParameters
+): AbstractClient<TTransport> {
   const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider, chain } = parameters;
   const transport = custom(eip1193Provider);
 
@@ -51,5 +48,5 @@ export function createAbstractClient<
   });
 
   const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient));
-  return abstractClient as AbstractClient<TTransport, ChainEIP712>;
+  return abstractClient as AbstractClient<TTransport>;
 }
