@@ -215,21 +215,6 @@ export type PrepareTransactionRequestErrorType =
   | EstimateGasErrorType
   | EstimateFeesPerGasErrorType
 
-
-// async function internal_estimateFeesPerGas<
-//   chain extends Chain | undefined,
-//   chainOverride extends Chain | undefined,
-//   type extends FeeValuesType = 'eip1559',
-// >(
-//   client: Client<Transport, chain>,
-//   args: EstimateFeesPerGasParameters<chain, chainOverride, type> & {
-//   block?: Block | undefined
-//   request?: PrepareTransactionRequestParameters<Chain, Account> | undefined
-//   },
-// ): Promise<EstimateFeesPerGasReturnType<type>> {
-
-// }
-
 /**
  * Prepares a transaction request for signing.
  *
