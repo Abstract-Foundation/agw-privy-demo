@@ -4,7 +4,6 @@ import {
   Client,
   Transport,
   Chain,
-  Block,
   TransactionRequest,
   TransactionRequestEIP1559,
   TransactionRequestEIP2930,
