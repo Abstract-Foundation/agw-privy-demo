@@ -13,9 +13,9 @@ import { ChainEIP712, Eip712WalletActions } from 'viem/zksync';
 import { globalWalletActions } from './actions';
 
 type AbstractClientConfig = {
-  smartAccountAddress: `0x${string}`;
+  smartAccountAddress: Hex;
   signerAddress: Hex;
-  validatorAddress: `0x${string}`;
+  validatorAddress: Hex;
   eip1193Provider: EIP1193Provider;
   chain: ChainEIP712;
 };
@@ -29,7 +29,6 @@ export type AbstractClient<
   TAccount extends Account = Account
 > = Client<TTransport, TChain, TAccount> & AbstractClientActions<TChain>;
 
-// TODO: add parameter checking - smartAccountAddress should be valid
 export function createAbstractClient<
   TTransport extends Transport,
 >(

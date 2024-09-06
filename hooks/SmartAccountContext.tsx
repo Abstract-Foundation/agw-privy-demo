@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom, EIP1193Provider } from "viem";
+import { createWalletClient, custom, EIP1193Provider, Hex } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { deployAccount } from '../lib/deployAccount';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
@@ -16,7 +16,7 @@ interface SmartAccountInterface {
     | AbstractClient
     | undefined;
   /** Smart account address */
-  smartAccountAddress: `0x${string}` | undefined;
+  smartAccountAddress: Hex | undefined;
   /** Boolean to indicate whether the smart account state has initialized */
   smartAccountReady: boolean;
 }
@@ -52,7 +52,7 @@ export const SmartAccountProvider = ({
     | undefined
   >();
   const [smartAccountAddress, setSmartAccountAddress] = useState<
-    `0x${string}` | undefined
+    Hex | undefined
   >();
   const [smartAccountReady, setSmartAccountReady] = useState(false);
 
@@ -68,7 +68,7 @@ export const SmartAccountProvider = ({
 
       const eip1193provider = await eoa.getEthereumProvider();
       const embeddedWalletClient = createWalletClient({
-        account: eoa.address as `0x${string}`,
+        account: eoa.address as Hex,
         chain: abstractTestnet,
         transport: custom(eip1193provider),
       }).extend(eip712WalletActions());
@@ -85,7 +85,7 @@ export const SmartAccountProvider = ({
 
       const smartAccountClient = createAbstractClient({
         smartAccountAddress: smartAccountAddress,
-        signerAddress: eoa.address as `0x${string}`,
+        signerAddress: eoa.address as Hex,
         validatorAddress: VALIDATOR_ADDRESS,
         eip1193Provider: eip1193provider as EIP1193Provider,
         chain: abstractTestnet
