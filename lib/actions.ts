@@ -346,16 +346,17 @@ export async function sendTransactionBatch<
     args: [calls],
   })
 
+  // Get cumulative value passed in
+  const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
+
   const batchTransaction: SendTransactionParameters<chain, account, chainOverride, request> = {
     // You might want to calculate and set the appropriate gas limit here
     // Copying over other fields from the first transaction in the batch
     ...parameters[0],
-    to: BATCH_CALLER_ADDRESS,
+    to: BATCH_CALLER_ADDRESS as Hex,
     data: batchCallData,
-    value: undefined, // Clear the value as it's included in the batch call data
+    value: totalValue,
   }
-
-  console.log("batchTxn", batchTransaction)
 
   return sendEip712Transaction(client, signerClient, batchTransaction, validatorAddress);
 }
