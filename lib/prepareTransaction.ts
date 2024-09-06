@@ -29,10 +29,7 @@ import {
   EstimateFeesPerGasReturnType,
   BaseError,
   formatGwei,
-  blobsToCommitments,
-  blobsToProofs,
-  commitmentsToVersionedHashes,
-  toBlobSidecars,
+  PublicClient
 } from "viem";
 
 import {
@@ -276,13 +273,14 @@ export type PrepareTransactionRequestErrorType =
  * })
  */
 export async function prepareTransactionRequest<
-  chain extends Chain | undefined,
+  chain extends Chain,
   account extends Account | undefined,
   const request extends PrepareTransactionRequestRequest<chain, chainOverride>,
   accountOverride extends Account | Address | undefined = undefined,
   chainOverride extends Chain | undefined = undefined,
 >(
   client: Client<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   args: PrepareTransactionRequestParameters<
     chain,
     account,
@@ -299,21 +297,18 @@ export async function prepareTransactionRequest<
     request
   >
 > {
-  console.log("CALLED")
   const {
     account: account_ = client.account,
-    blobs,
     chain,
     gas,
-    kzg,
     nonce,
     nonceManager,
     parameters = defaultParameters,
     type,
   } = args
-  const account = account_ ? parseAccount(account_) : undefined
+  const smartAccount = account_ ? parseAccount(account_) : undefined
 
-  const request = { ...args, ...(account ? { from: account?.address } : {}) }
+  const request = { ...args, ...(smartAccount ? { from: smartAccount?.address } : {}) }
 
   let block: Block | undefined
   async function getBlock(): Promise<Block> {
@@ -336,52 +331,26 @@ export async function prepareTransactionRequest<
     return chainId
   }
 
-  if (
-    (parameters.includes('blobVersionedHashes') ||
-      parameters.includes('sidecars')) &&
-    blobs &&
-    kzg
-  ) {
-    const commitments = blobsToCommitments({ blobs, kzg })
-
-    if (parameters.includes('blobVersionedHashes')) {
-      const versionedHashes = commitmentsToVersionedHashes({
-        commitments,
-        to: 'hex',
-      })
-      request.blobVersionedHashes = versionedHashes
-    }
-    if (parameters.includes('sidecars')) {
-      const proofs = blobsToProofs({ blobs, commitments, kzg })
-      const sidecars = toBlobSidecars({
-        blobs,
-        commitments,
-        proofs,
-        to: 'hex',
-      })
-      request.sidecars = sidecars
-    }
-  }
-
   if (parameters.includes('chainId')) request.chainId = await getChainId()
 
-  if (parameters.includes('nonce') && typeof nonce === 'undefined' && account) {
+  if (parameters.includes('nonce') && typeof nonce === 'undefined' && smartAccount) {
     if (nonceManager) {
       const chainId = await getChainId()
       request.nonce = await nonceManager.consume({
-        address: account.address,
+        address: smartAccount.address,
         chainId,
         client,
       })
     } else {
       request.nonce = await getAction(
-        client,
+        publicClient,  // The public client is more reliable for fetching the latest nonce
         getTransactionCount,
         'getTransactionCount',
       )({
-        address: account.address,
+        address: smartAccount.address,
         blockTag: 'pending',
       })
+      console.log(request.nonce)
     }
   }
 
@@ -459,8 +428,8 @@ export async function prepareTransactionRequest<
       'estimateGas',
     )({
       ...request,
-      account: account
-        ? { address: account.address, type: 'json-rpc' }
+      account: smartAccount
+        ? { address: smartAccount.address, type: 'json-rpc' }
         : undefined,
     } as EstimateGasParameters)
 
