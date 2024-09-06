@@ -3,54 +3,50 @@ import {
   createClient,
   custom,
   Transport,
-  Chain,
   Account,
   Hex,
   EIP1193Provider,
   Client,
 } from 'viem';
-import { abstractTestnet } from 'viem/chains';
-import { Eip712WalletActions } from 'viem/zksync';
+import { ChainEIP712, Eip712WalletActions } from 'viem/zksync';
 import { globalWalletActions } from './actions';
 
-type AbstractClientConfig = {
-  smartAccountAddress: `0x${string}`;
+type CreateAbstractClientParameters = {
+  smartAccountAddress: Hex;
   signerAddress: Hex;
-  validatorAddress: `0x${string}`;
+  validatorAddress: Hex;
   eip1193Provider: EIP1193Provider;
+  chain: ChainEIP712;
 };
 
-type AbstractClientActions<TChain extends Chain | undefined = Chain | undefined> = 
-  Eip712WalletActions<TChain>;
+type AbstractClientActions = Eip712WalletActions<ChainEIP712, Account>;
 
 export type AbstractClient<
   TTransport extends Transport = Transport,
-  TChain extends Chain | undefined = Chain | undefined,
   TAccount extends Account = Account
-> = Client<TTransport, TChain, TAccount> & AbstractClientActions<TChain>;
+> = Client<TTransport, ChainEIP712, TAccount> & AbstractClientActions;
 
-// TODO: add parameter checking - smartAccountAddress should be valid
 export function createAbstractClient<
   TTransport extends Transport,
 >(
-  parameters: AbstractClientConfig
-): AbstractClient<TTransport, typeof abstractTestnet> {
-  const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider } = parameters;
+  parameters: CreateAbstractClientParameters
+): AbstractClient<TTransport> {
+  const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider, chain } = parameters;
   const transport = custom(eip1193Provider);
 
   const baseClient = createClient({
     account: smartAccountAddress,
-    chain: abstractTestnet,
+    chain: chain,
     transport,
   });
 
   // Create a signer wallet client to handle actual signing
   const signerWalletClient = createWalletClient({
     account: signerAddress,
-    chain: abstractTestnet,
+    chain: chain,
     transport: custom(eip1193Provider)
   });
 
   const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient));
-  return abstractClient as AbstractClient<TTransport, typeof abstractTestnet>;
+  return abstractClient as AbstractClient<TTransport>;
 }

@@ -9,7 +9,7 @@ const publicClient = createPublicClient({
   transport: http()
 })
 
-async function addressHasCode(address: `0x${string}`): Promise<boolean> {
+async function addressHasCode(address: Hex): Promise<boolean> {
   try {
     const bytecode = await publicClient.getCode({
       address: address
@@ -21,7 +21,7 @@ async function addressHasCode(address: `0x${string}`): Promise<boolean> {
   }
 }
 
-export async function deployAccount(privyClient: any /* need to figure out the right type */): Promise<`0x${string}`> {
+export async function deployAccount(privyClient: any /* need to figure out the right type */): Promise<Hex> {
   // Generate salt based off address
   const addressBytes = toBytes(privyClient.account.address);
   const salt = keccak256(addressBytes);
@@ -32,7 +32,7 @@ export async function deployAccount(privyClient: any /* need to figure out the r
     abi: ABI,
     functionName: 'getAddressForSalt',
     args: [salt],
-  }) as `0x${string}`;
+  }) as Hex;
 
   // No need to deploy if the account already exists
   const accountExists = await addressHasCode(accountAddress);
@@ -42,7 +42,7 @@ export async function deployAccount(privyClient: any /* need to figure out the r
 
   // Define the call struct
   const call = {
-    target: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    target: '0x0000000000000000000000000000000000000000' as Hex,
     allowFailure: false,
     value: 0n,
     callData: '0x' as Hex,
@@ -96,5 +96,5 @@ export async function deployAccount(privyClient: any /* need to figure out the r
 
   // Wait for the transaction to be mined
   await publicClient.waitForTransactionReceipt({ hash })
-  return accountAddress as `0x${string}`;
+  return accountAddress as Hex;
 }

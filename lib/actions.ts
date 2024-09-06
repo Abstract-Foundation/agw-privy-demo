@@ -14,12 +14,18 @@ import {
   Chain,
   createPublicClient,
   http,
+  ContractFunctionArgs,
+  ContractFunctionName,
+  WriteContractParameters,
+  WriteContractReturnType,
+  EncodeFunctionDataParameters,
+  encodeFunctionData,
+  Abi,
 } from "viem";
 import {
   abstractTestnet,
 } from "viem/chains";
 import {
-  writeContract,
   signTransaction as signTransaction_,
   sendTransaction as core_sendTransaction,
   SendTransactionParameters as core_SendTransactionParameters,
@@ -33,7 +39,8 @@ import {
   getAction,
   assertCurrentChain,
   getTransactionError,
-  GetTransactionErrorParameters
+  GetTransactionErrorParameters,
+  getContractError
 } from "viem/utils"
 import {
   BaseError
@@ -52,6 +59,8 @@ import {
   SendEip712TransactionReturnType,
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
+
+const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
 
 export class AccountNotFoundError extends BaseError {
   constructor({ docsPath }: { docsPath?: string | undefined } = {}) {
@@ -113,11 +122,11 @@ export type AssertEip712RequestParameters = ExactPartial<
 >
 
 export async function signEip712Transaction<
-  chain extends ChainEIP712 | undefined,
-  account extends Account | undefined,
-  chainOverride extends ChainEIP712 | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
@@ -132,13 +141,17 @@ export async function signEip712Transaction<
     throw new AccountNotFoundError({
       docsPath: '/docs/actions/wallet/signTransaction',
     })
-  const account = parseAccount(account_)
+  const smartAccount = parseAccount(account_)
 
   assertEip712Request({
-    account,
+    account: smartAccount,
     chain,
     ...(args as AssertEip712RequestParameters),
   })
+
+  if (!chain || !ALLOWED_CHAINS.includes(chain)) {
+    throw new BaseError('Invalid chain specified');
+  }
 
   if (!chain?.custom?.getEip712Domain)
     throw new BaseError('`getEip712Domain` not found on chain.')
@@ -155,7 +168,7 @@ export async function signEip712Transaction<
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
-    from: account.address,  // This is the AA wallet address
+    from: smartAccount.address,
     type: 'eip712',
   })
 
@@ -181,11 +194,11 @@ export async function signEip712Transaction<
 }
 
 export async function signTransaction<
-  chain extends ChainEIP712 | undefined,
-  account extends Account | undefined,
-  chainOverride extends ChainEIP712 | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
   args: SignTransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
@@ -195,12 +208,12 @@ export async function signTransaction<
 }
 
 export async function sendEip712Transaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
-  chainOverride extends ChainEIP712 | undefined = undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
   parameters: SendEip712TransactionParameters<
     chain,
@@ -232,7 +245,6 @@ export async function sendEip712Transaction<
       parameters: ['gas', 'nonce', 'fees'],
     } as any)
 
-    // TODO: make sure chain is Abstract or AbstractTestnet
     let chainId: number | undefined
     if (chain !== null) {
       chainId = await getAction(signerClient, getChainId, 'getChainId')({})
@@ -264,12 +276,12 @@ export async function sendEip712Transaction<
 }
 
 export async function sendTransaction<
-  chain extends ChainEIP712,
-  account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
-  chainOverride extends ChainEIP712 | undefined = undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
   parameters: SendTransactionParameters<chain, account, chainOverride, request>,
   validatorAddress: Hex,
@@ -287,16 +299,86 @@ export async function sendTransaction<
   )
 }
 
+export async function writeContract<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  const abi extends Abi | readonly unknown[],
+  functionName extends ContractFunctionName<abi, 'nonpayable' | 'payable'>,
+  args extends ContractFunctionArgs<
+    abi,
+    'nonpayable' | 'payable',
+    functionName
+  >,
+  chainOverride extends Chain | undefined,
+>(
+  client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  parameters: WriteContractParameters<
+    abi,
+    functionName,
+    args,
+    chain,
+    account,
+    chainOverride
+  >,
+  validatorAddress: Hex,
+): Promise<WriteContractReturnType> {
+  const {
+    abi,
+    account: account_ = client.account,
+    address,
+    args,
+    dataSuffix,
+    functionName,
+    ...request
+  } = parameters as WriteContractParameters
+
+  if (!account_)
+    throw new AccountNotFoundError({
+      docsPath: '/docs/contract/writeContract',
+    })
+  const account = parseAccount(account_)
+
+  const data = encodeFunctionData({
+    abi,
+    args,
+    functionName,
+  } as EncodeFunctionDataParameters)
+
+  try {
+    return await sendTransaction(
+      client,
+      signerClient,
+      {
+        data: `${data}${dataSuffix ? dataSuffix.replace('0x', '') : ''}`,
+        to: address,
+        account,
+        ...request,
+      },
+      validatorAddress,
+    );
+  } catch (error) {
+    throw getContractError(error as BaseError, {
+      abi,
+      address,
+      args,
+      docsPath: '/docs/contract/writeContract',
+      functionName,
+      sender: account.address,
+    })
+  }
+}
+
 export function globalWalletActions<
   transport extends Transport,
-  chain extends ChainEIP712,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
 >(
   validatorAddress: Hex,
   signerClient: WalletClient<transport, chain, account>,
 ) {
   return (
-    client: Client<transport, chain, account>,
+    client: Client<transport, ChainEIP712, Account>,
   ): Eip712WalletActions<chain, account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
@@ -306,7 +388,9 @@ export function globalWalletActions<
         Object.assign(client, {
           sendTransaction: (args: any) => sendTransaction(client, signerClient, args, validatorAddress),
         }),
+        signerClient,
         args,
+        validatorAddress,
       ),
   })
 }
