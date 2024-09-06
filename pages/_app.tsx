@@ -2,7 +2,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { abstractTestnet } from "viem/chains";
+import { abstractTestnet, zksync } from "viem/chains";
 import { SmartAccountProvider } from "../hooks/SmartAccountContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -58,8 +58,8 @@ function MyApp({ Component, pageProps }: AppProps) {
             noPromptOnSignature: true,
           },
           // @ts-ignore
-          defaultChain: abstractTestnet,
-          supportedChains: [abstractTestnet]
+          defaultChain: zksync,
+          supportedChains: [zksync]
         }}
       >
         <SmartAccountProvider>

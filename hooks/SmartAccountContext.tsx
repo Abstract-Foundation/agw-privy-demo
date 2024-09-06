@@ -88,6 +88,7 @@ export const SmartAccountProvider = ({
         signerAddress: eoa.address as `0x${string}`,
         validatorAddress: VALIDATOR_ADDRESS,
         eip1193Provider: eip1193provider as EIP1193Provider,
+        chain: abstractTestnet
       })
 
       setSmartAccountClient(smartAccountClient);

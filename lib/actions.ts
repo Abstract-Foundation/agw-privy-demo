@@ -53,6 +53,8 @@ import {
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
 
+const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
+
 export class AccountNotFoundError extends BaseError {
   constructor({ docsPath }: { docsPath?: string | undefined } = {}) {
     super(
@@ -113,7 +115,7 @@ export type AssertEip712RequestParameters = ExactPartial<
 >
 
 export async function signEip712Transaction<
-  chain extends ChainEIP712 | undefined,
+  chain extends ChainEIP712,
   account extends Account | undefined,
   chainOverride extends ChainEIP712 | undefined,
 >(
@@ -132,13 +134,17 @@ export async function signEip712Transaction<
     throw new AccountNotFoundError({
       docsPath: '/docs/actions/wallet/signTransaction',
     })
-  const account = parseAccount(account_)
+  const smartAccount = parseAccount(account_)
 
   assertEip712Request({
-    account,
+    account: smartAccount,
     chain,
     ...(args as AssertEip712RequestParameters),
   })
+
+  if (!chain || !ALLOWED_CHAINS.includes(chain)) {
+    throw new BaseError('Invalid chain specified');
+  }
 
   if (!chain?.custom?.getEip712Domain)
     throw new BaseError('`getEip712Domain` not found on chain.')
@@ -155,7 +161,7 @@ export async function signEip712Transaction<
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
-    from: account.address,  // This is the AA wallet address
+    from: smartAccount.address,
     type: 'eip712',
   })
 
@@ -181,7 +187,7 @@ export async function signEip712Transaction<
 }
 
 export async function signTransaction<
-  chain extends ChainEIP712 | undefined,
+  chain extends ChainEIP712,
   account extends Account | undefined,
   chainOverride extends ChainEIP712 | undefined,
 >(
@@ -232,7 +238,6 @@ export async function sendEip712Transaction<
       parameters: ['gas', 'nonce', 'fees'],
     } as any)
 
-    // TODO: make sure chain is Abstract or AbstractTestnet
     let chainId: number | undefined
     if (chain !== null) {
       chainId = await getAction(signerClient, getChainId, 'getChainId')({})
