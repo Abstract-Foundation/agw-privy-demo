@@ -12,7 +12,6 @@ import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
-import { abstractTestnet } from "viem/chains";
 import { getGeneralPaymasterInput } from "viem/zksync";
 
 export default function DashboardPage() {
@@ -49,7 +48,6 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      // TODO: figure out account hoisting
       const transactionHash = await smartAccountClient.sendTransaction({
         // account: smartAccountClient.account,
         // chain: abstractTestnet,

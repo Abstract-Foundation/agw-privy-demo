@@ -262,7 +262,7 @@ export async function prepareTransactionRequest<
   accountOverride extends Account | Address | undefined = undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, ChainEIP712, Account>,
   publicClient: PublicClient<Transport, chain>,
   args: PrepareTransactionRequestParameters<
     chain,
