@@ -12,6 +12,8 @@ import {
   SendTransactionParameters,
   SendTransactionReturnType,
   Chain,
+  createPublicClient,
+  http,
 } from "viem";
 import {
   abstractTestnet,
@@ -23,7 +25,6 @@ import {
   SendTransactionParameters as core_SendTransactionParameters,
   signTypedData,
   getChainId,
-  prepareTransactionRequest,
   sendRawTransaction
 } from "viem/actions";
 import {
@@ -50,6 +51,7 @@ import {
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
 } from "viem/zksync";
+import {prepareTransactionRequest} from "./prepareTransaction";
 
 export class AccountNotFoundError extends BaseError {
   constructor({ docsPath }: { docsPath?: string | undefined } = {}) {
@@ -193,7 +195,7 @@ export async function signTransaction<
 }
 
 export async function sendEip712Transaction<
-  chain extends ChainEIP712 | undefined,
+  chain extends ChainEIP712,
   account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
   chainOverride extends ChainEIP712 | undefined = undefined,
@@ -216,14 +218,17 @@ export async function sendEip712Transaction<
     })
   const account = parseAccount(signerClient.account)
 
+  const publicClient = createPublicClient({
+    chain: chain!,
+    transport: http(),
+  });
+
   try {
     assertEip712Request(parameters)
 
     // Prepare the request for signing (assign appropriate fees, etc.)
-    // TODO: fix nonce and fee population
-    const request = await prepareTransactionRequest(client, {
+    const request = await prepareTransactionRequest(client, publicClient, {
       ...parameters,
-      nonceManager: account.nonceManager,
       parameters: ['gas', 'nonce', 'fees'],
     } as any)
 
@@ -259,7 +264,7 @@ export async function sendEip712Transaction<
 }
 
 export async function sendTransaction<
-  chain extends ChainEIP712 | undefined,
+  chain extends ChainEIP712,
   account extends Account | undefined,
   const request extends SendTransactionRequest<chain, chainOverride>,
   chainOverride extends ChainEIP712 | undefined = undefined,
@@ -284,7 +289,7 @@ export async function sendTransaction<
 
 export function globalWalletActions<
   transport extends Transport,
-  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  chain extends ChainEIP712,
   account extends Account | undefined = Account | undefined,
 >(
   validatorAddress: Hex,
