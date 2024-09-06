@@ -288,8 +288,7 @@ export async function prepareTransactionRequest<
     nonceManager,
     parameters = defaultParameters,
   } = args
-  const smartAccount = account_ ? parseAccount(account_) : undefined
-
+  const smartAccount = parseAccount(account_!)
   const request = { ...args, ...(smartAccount ? { from: smartAccount?.address } : {}) }
 
   let chainId: number | undefined
