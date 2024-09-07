@@ -53,7 +53,7 @@ export default function DashboardPage() {
       //   // chain: abstractTestnet,
       //   to: NFT_ADDRESS,
       //   data: mintData,
-      //   paymaster: NFT_PAYMASTER_ADDRESS,
+      //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
       //   paymasterInput: paymasterInput,
       // });
 
