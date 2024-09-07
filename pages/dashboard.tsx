@@ -6,7 +6,6 @@ import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  NFT_PAYMASTER_ADDRESS,
   AA_FACTORY_PAYMASTER_ADDRESS
 } from "../lib/constants";
 import { encodeFunctionData } from "viem";

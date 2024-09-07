@@ -22,7 +22,6 @@ import {
   EncodeFunctionDataParameters,
   encodeFunctionData,
   Abi,
-  TransactionRequestEIP1559
 } from "viem";
 import {
   abstractTestnet,
