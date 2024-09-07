@@ -94,6 +94,18 @@ export class InvalidEip712TransactionError extends BaseError {
   }
 }
 
+export type SendTransactionBatchRequestParameters<
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>
+> = {
+  // TODO: figure out if more fields need to be lifted up
+  calls: SendTransactionParameters<chain, account, chainOverride, request>[];
+  paymaster?: Address | undefined
+  paymasterInput?: Hex | undefined
+};
+
 function isEIP712Transaction(
   transaction: ExactPartial<
     OneOf<ZksyncTransactionRequest | ZksyncTransactionSerializable>
@@ -310,17 +322,17 @@ type Call = {
 const BATCH_CALLER_ADDRESS = "0xB4314a553eD1Aa0C3d90112fF2A81f9e414CB09d";
 
 export async function sendTransactionBatch<
-  const request extends SendTransactionRequest<chain, chainOverride>,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>,
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
-  parameters: SendTransactionParameters<chain, account, chainOverride, request>[],
+  parameters: SendTransactionBatchRequestParameters<chain, account, chainOverride, request>,
   validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
-  const calls: Call[] = parameters.map(tx => ({
+  const calls: Call[] = parameters.calls.map(tx => ({
     target: tx.to!,
     allowFailure: false, // Set to false by default, adjust if needed
     value: BigInt(tx.value ?? 0),
@@ -349,14 +361,14 @@ export async function sendTransactionBatch<
   // Get cumulative value passed in
   const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
 
-  const batchTransaction: SendTransactionParameters<chain, account, chainOverride, request> = {
-    // You might want to calculate and set the appropriate gas limit here
-    // Copying over other fields from the first transaction in the batch
-    ...parameters[0],
+  const batchTransaction = {
     to: BATCH_CALLER_ADDRESS as Hex,
     data: batchCallData,
     value: totalValue,
-  }
+    paymaster: parameters.paymaster,
+    paymasterInput: parameters.paymasterInput,
+    type: "eip712"
+  } as SendTransactionParameters<chain, account, chainOverride, request>;
 
   return sendEip712Transaction(client, signerClient, batchTransaction, validatorAddress);
 }
@@ -434,9 +446,8 @@ export async function writeContract<
 export type AbstractWalletActions<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 > = Eip712WalletActions<chain, account> & {
-  sendTransactionBatch: (args: SendTransactionParameters<chain, account, chainOverride>[]) => Promise<SendTransactionReturnType>;
+  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(args: SendTransactionBatchRequestParameters<chain, account, chainOverride, request>) => Promise<SendTransactionReturnType>;
 };
 
 export function globalWalletActions<
