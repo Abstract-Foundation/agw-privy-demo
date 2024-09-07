@@ -58,7 +58,6 @@ import {
   SignEip712TransactionParameters,
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
-  ZksyncTransactionRequestEIP712
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
 
