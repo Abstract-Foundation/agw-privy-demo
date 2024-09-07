@@ -218,6 +218,25 @@ export async function sendTransaction<
   >,
   validatorAddress: Hex,
 ): Promise<SendEip712TransactionReturnType> {
+  return _sendTransaction(client, signerClient, parameters, validatorAddress);
+}
+
+export async function _sendTransaction<
+  const request extends SendTransactionRequest<chain, chainOverride>,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+>(
+  client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  parameters: SendEip712TransactionParameters<
+    chain,
+    account,
+    chainOverride,
+    request
+  >,
+  validatorAddress: Hex,
+): Promise<SendEip712TransactionReturnType> {
   const { chain = client.chain } = parameters
 
   if (!signerClient.account)
@@ -330,7 +349,7 @@ export async function sendTransactionBatch<
     type: "eip712",
   } as any;
 
-  return sendTransaction(client, signerClient, batchTransaction, validatorAddress);
+  return _sendTransaction(client, signerClient, batchTransaction, validatorAddress);
 }
 
 export async function writeContract<
