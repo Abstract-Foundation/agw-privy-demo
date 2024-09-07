@@ -22,6 +22,7 @@ import {
   EncodeFunctionDataParameters,
   encodeFunctionData,
   Abi,
+  WalletActions,
 } from "viem";
 import {
   abstractTestnet,
@@ -29,7 +30,7 @@ import {
 import {
   signTypedData,
   getChainId,
-  sendRawTransaction
+  sendRawTransaction,
 } from "viem/actions";
 import {
   parseAccount,
@@ -45,7 +46,6 @@ import {
 } from "viem"
 import {
   ChainEIP712,
-  Eip712WalletActions,
   deployContract,
   SignEip712TransactionReturnType,
   ZksyncTransactionRequest,
@@ -53,6 +53,8 @@ import {
   SignEip712TransactionParameters,
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
+  DeployContractReturnType,
+  DeployContractParameters,
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
 import {BATCH_CALLER_ADDRESS} from "./constants";
@@ -406,8 +408,31 @@ export async function writeContract<
 export type AbstractWalletActions<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-> = Eip712WalletActions<chain, account> & {
-  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(args: SendTransactionBatchParameters<chain, account, chainOverride, request>) => Promise<SendTransactionReturnType>;
+> = {
+  sendTransaction: <
+    const request extends SendTransactionRequest<chain, chainOverride>,
+    chainOverride extends ChainEIP712 | undefined = undefined,
+  >(
+    args: SendTransactionParameters<chain, account, chainOverride, request>,
+  ) => Promise<SendTransactionReturnType>;
+  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(
+    args: SendTransactionBatchParameters<chain, account, chainOverride, request>
+  ) => Promise<SendTransactionReturnType>;
+  signTransaction: <chainOverride extends ChainEIP712 | undefined = undefined>(
+    args: SignEip712TransactionParameters<chain, account, chainOverride>,
+  ) => Promise<SignEip712TransactionReturnType>;
+  deployContract: <
+    const abi extends Abi | readonly unknown[],
+    chainOverride extends ChainEIP712 | undefined,
+  >(
+    args: DeployContractParameters<
+      abi,
+      ChainEIP712 | undefined,
+      Account | undefined,
+      chainOverride
+    >,
+  ) => Promise<DeployContractReturnType>;
+  writeContract: WalletActions<chain, account>['writeContract'];
 };
 
 export function globalWalletActions<
