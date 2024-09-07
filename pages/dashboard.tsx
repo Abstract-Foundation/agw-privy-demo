@@ -6,7 +6,7 @@ import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  NFT_PAYMASTER_ADDRESS,
+  AA_FACTORY_PAYMASTER_ADDRESS
 } from "../lib/constants";
 import { encodeFunctionData } from "viem";
 import ABI from "../lib/nftABI.json";
@@ -48,14 +48,30 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      const transactionHash = await smartAccountClient.sendTransaction({
-        // account: smartAccountClient.account,
-        // chain: abstractTestnet,
-        to: NFT_ADDRESS,
-        data: mintData,
-        paymaster: NFT_PAYMASTER_ADDRESS,
+      // const transactionHash = await smartAccountClient.sendTransaction({
+      //   // account: smartAccountClient.account,
+      //   // chain: abstractTestnet,
+      //   to: NFT_ADDRESS,
+      //   data: mintData,
+      //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+      //   paymasterInput: paymasterInput,
+      // });
+
+      const transactionHash = await smartAccountClient.sendTransactionBatch({
+        calls: [
+          {
+            to: NFT_ADDRESS,
+            data: mintData,
+            value: 0n
+          },
+          {
+            to: NFT_ADDRESS,
+            data: mintData,
+          }
+        ],
+        paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
-      });
+      })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",

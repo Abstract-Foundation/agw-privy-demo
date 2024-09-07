@@ -8,8 +8,8 @@ import {
   EIP1193Provider,
   Client,
 } from 'viem';
-import { ChainEIP712, Eip712WalletActions } from 'viem/zksync';
-import { globalWalletActions } from './actions';
+import { ChainEIP712 } from 'viem/zksync';
+import { globalWalletActions, AbstractWalletActions } from './actions';
 
 type CreateAbstractClientParameters = {
   smartAccountAddress: Hex;
@@ -19,7 +19,7 @@ type CreateAbstractClientParameters = {
   chain: ChainEIP712;
 };
 
-type AbstractClientActions = Eip712WalletActions<ChainEIP712, Account>;
+type AbstractClientActions = AbstractWalletActions<ChainEIP712, Account>;
 
 export type AbstractClient<
   TTransport extends Transport = Transport,

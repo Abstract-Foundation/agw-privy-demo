@@ -1,4 +1,5 @@
 import {
+  Address,
   Transport,
   Account,
   Client,
@@ -92,6 +93,18 @@ export class InvalidEip712TransactionError extends BaseError {
     )
   }
 }
+
+export type SendTransactionBatchParameters<
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>
+> = {
+  // TODO: figure out if more fields need to be lifted up
+  calls: SendTransactionParameters<chain, account, chainOverride, request>[];
+  paymaster?: Address | undefined
+  paymasterInput?: Hex | undefined
+};
 
 function isEIP712Transaction(
   transaction: ExactPartial<
@@ -299,6 +312,71 @@ export async function sendTransaction<
   )
 }
 
+type Call = {
+  target: Address
+  allowFailure: boolean
+  value: bigint
+  callData: Hex
+}
+
+const BATCH_CALLER_ADDRESS = "0xB4314a553eD1Aa0C3d90112fF2A81f9e414CB09d";
+
+export async function sendTransactionBatch<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>,
+>(
+  client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  parameters: SendTransactionBatchParameters<chain, account, chainOverride, request>,
+  validatorAddress: Hex,
+): Promise<SendTransactionReturnType> {
+  if (parameters.calls.length === 0) {
+    throw new Error("No calls provided");
+  }
+
+  const calls: Call[] = parameters.calls.map(tx => ({
+    target: tx.to!,
+    allowFailure: false, // Set to false by default, adjust if needed
+    value: BigInt(tx.value ?? 0),
+    callData: tx.data ?? '0x'
+  }));
+
+  const batchCallData = encodeFunctionData({
+    abi: [{
+      name: 'batchCall',
+      type: 'function',
+      inputs: [{ 
+        type: 'tuple[]', 
+        name: 'calls',
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'allowFailure', type: 'bool' },
+          { name: 'value', type: 'uint256' },
+          { name: 'callData', type: 'bytes' }
+        ]
+      }],
+      outputs: [],
+    }],
+    args: [calls],
+  })
+
+  // Get cumulative value passed in
+  const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
+
+  const batchTransaction = {
+    to: BATCH_CALLER_ADDRESS as Hex,
+    data: batchCallData,
+    value: totalValue,
+    paymaster: parameters.paymaster,
+    paymasterInput: parameters.paymasterInput,
+    type: "eip712",
+  } as any;
+
+  return sendEip712Transaction(client, signerClient, batchTransaction, validatorAddress);
+}
+
 export async function writeContract<
   chain extends Chain | undefined,
   account extends Account | undefined,
@@ -369,6 +447,13 @@ export async function writeContract<
   }
 }
 
+export type AbstractWalletActions<
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
+> = Eip712WalletActions<chain, account> & {
+  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(args: SendTransactionBatchParameters<chain, account, chainOverride, request>) => Promise<SendTransactionReturnType>;
+};
+
 export function globalWalletActions<
   transport extends Transport,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -379,8 +464,9 @@ export function globalWalletActions<
 ) {
   return (
     client: Client<transport, ChainEIP712, Account>,
-  ): Eip712WalletActions<chain, account> => ({
+  ): AbstractWalletActions<chain, account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, args, validatorAddress),
+    sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args),
     writeContract: (args) =>
