@@ -22,6 +22,7 @@ import {
   EncodeFunctionDataParameters,
   encodeFunctionData,
   Abi,
+  TransactionRequestEIP1559
 } from "viem";
 import {
   abstractTestnet,
@@ -58,6 +59,7 @@ import {
   SignEip712TransactionParameters,
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
+  ZksyncTransactionRequestEIP712
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
 
@@ -94,7 +96,7 @@ export class InvalidEip712TransactionError extends BaseError {
   }
 }
 
-export type SendTransactionBatchRequestParameters<
+export type SendTransactionBatchParameters<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -329,9 +331,13 @@ export async function sendTransactionBatch<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
-  parameters: SendTransactionBatchRequestParameters<chain, account, chainOverride, request>,
+  parameters: SendTransactionBatchParameters<chain, account, chainOverride, request>,
   validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
+  if (parameters.calls.length === 0) {
+    throw new Error("No calls provided");
+  }
+
   const calls: Call[] = parameters.calls.map(tx => ({
     target: tx.to!,
     allowFailure: false, // Set to false by default, adjust if needed
@@ -367,8 +373,8 @@ export async function sendTransactionBatch<
     value: totalValue,
     paymaster: parameters.paymaster,
     paymasterInput: parameters.paymasterInput,
-    type: "eip712"
-  } as SendTransactionParameters<chain, account, chainOverride, request>;
+    type: "eip712",
+  } as any;
 
   return sendEip712Transaction(client, signerClient, batchTransaction, validatorAddress);
 }
@@ -447,7 +453,7 @@ export type AbstractWalletActions<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
 > = Eip712WalletActions<chain, account> & {
-  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(args: SendTransactionBatchRequestParameters<chain, account, chainOverride, request>) => Promise<SendTransactionReturnType>;
+  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(args: SendTransactionBatchParameters<chain, account, chainOverride, request>) => Promise<SendTransactionReturnType>;
 };
 
 export function globalWalletActions<
