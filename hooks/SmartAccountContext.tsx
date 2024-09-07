@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom, EIP1193Provider, Hex } from "viem";
+import { createWalletClient, custom, EIP1193Provider, Hex, createPublicClient, http } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { deployAccount } from '../lib/deployAccount';
 import { VALIDATOR_ADDRESS } from '../lib/constants';
 import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient";
 import { eip712WalletActions } from "viem/zksync";
+import { getSmartAccountAddressFromInitialSigner } from "../lib/utils";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -73,6 +73,11 @@ export const SmartAccountProvider = ({
         transport: custom(eip1193provider),
       }).extend(eip712WalletActions());
 
+      const publicClient = createPublicClient({
+        chain: abstractTestnet,
+        transport: http()
+      })
+
       // const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
       // const address = getAddress(accounts[0]!);
       // const browserWalletClient = createWalletClient({
@@ -81,7 +86,7 @@ export const SmartAccountProvider = ({
       //   transport: custom(window.ethereum),
       // }).extend(eip712WalletActions());
 
-      const smartAccountAddress = await deployAccount(embeddedWalletClient);
+      const smartAccountAddress = await getSmartAccountAddressFromInitialSigner(embeddedWalletClient.account.address, publicClient);
 
       const smartAccountClient = createAbstractClient({
         smartAccountAddress: smartAccountAddress,

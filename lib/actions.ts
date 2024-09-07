@@ -13,8 +13,6 @@ import {
   SendTransactionParameters,
   SendTransactionReturnType,
   Chain,
-  createPublicClient,
-  http,
   ContractFunctionArgs,
   ContractFunctionName,
   WriteContractParameters,
@@ -22,6 +20,7 @@ import {
   EncodeFunctionDataParameters,
   encodeFunctionData,
   Abi,
+  PublicClient,
 } from "viem";
 import {
   abstractTestnet,
@@ -90,6 +89,20 @@ export class InvalidEip712TransactionError extends BaseError {
   }
 }
 
+export async function isSmartAccountDeployed<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined
+>(publicClient: PublicClient<Transport, chain>, address: Hex): Promise<boolean> {
+  try {
+    const bytecode = await publicClient.getCode({
+      address: address
+    })
+    return bytecode !== null && bytecode !== '0x' && bytecode !== undefined
+  } catch (error) {
+    console.error('Error checking address:', error)
+    return false
+  }
+}
+
 export type SendTransactionBatchParameters<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
@@ -137,6 +150,7 @@ export async function signTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
 ): Promise<SignEip712TransactionReturnType> {
@@ -210,6 +224,7 @@ export async function sendTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: SendEip712TransactionParameters<
     chain,
     account,
@@ -218,7 +233,7 @@ export async function sendTransaction<
   >,
   validatorAddress: Hex,
 ): Promise<SendEip712TransactionReturnType> {
-  return _sendTransaction(client, signerClient, parameters, validatorAddress);
+  return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress);
 }
 
 export async function _sendTransaction<
@@ -229,6 +244,7 @@ export async function _sendTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: SendEip712TransactionParameters<
     chain,
     account,
@@ -244,11 +260,6 @@ export async function _sendTransaction<
       docsPath: '/docs/actions/wallet/sendTransaction',
     })
   const account = parseAccount(signerClient.account)
-
-  const publicClient = createPublicClient({
-    chain: chain!,
-    transport: http(),
-  });
 
   try {
     assertEip712Request(parameters)
@@ -268,7 +279,7 @@ export async function _sendTransaction<
       })
     }
 
-    const serializedTransaction = await signTransaction(client, signerClient, {
+    const serializedTransaction = await signTransaction(client, signerClient, publicClient, {
       ...request,
       chainId,
     } as any, validatorAddress)
@@ -304,6 +315,7 @@ export async function sendTransactionBatch<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: SendTransactionBatchParameters<chain, account, chainOverride, request>,
   validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
@@ -340,6 +352,10 @@ export async function sendTransactionBatch<
   // Get cumulative value passed in
   const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
 
+  if (!isSmartAccountDeployed(publicClient, client.account.address)) {
+
+  } 
+
   const batchTransaction = {
     to: BATCH_CALLER_ADDRESS as Hex,
     data: batchCallData,
@@ -349,7 +365,7 @@ export async function sendTransactionBatch<
     type: "eip712",
   } as any;
 
-  return _sendTransaction(client, signerClient, batchTransaction, validatorAddress);
+  return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress);
 }
 
 export async function writeContract<
@@ -366,6 +382,7 @@ export async function writeContract<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: WriteContractParameters<
     abi,
     functionName,
@@ -402,6 +419,7 @@ export async function writeContract<
     return await sendTransaction(
       client,
       signerClient,
+      publicClient,
       {
         data: `${data}${dataSuffix ? dataSuffix.replace('0x', '') : ''}`,
         to: address,
@@ -438,20 +456,22 @@ export function globalWalletActions<
 >(
   validatorAddress: Hex,
   signerClient: WalletClient<transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
 ) {
   return (
     client: Client<transport, ChainEIP712, Account>,
   ): AbstractWalletActions<chain, account> => ({
-    sendTransaction: (args) => sendTransaction(client, signerClient, args, validatorAddress),
-    sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, args, validatorAddress),
-    signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
-    deployContract: (args) => deployContract(client, args),
+    sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
+    sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
+    signTransaction: (args) => signTransaction(client, signerClient, publicClient, args, validatorAddress),
+    deployContract: (args) => deployContract(client, args), // TODO: update this
     writeContract: (args) =>
       writeContract(
         Object.assign(client, {
-          sendTransaction: (args: any) => sendTransaction(client, signerClient, args, validatorAddress),
+          sendTransaction: (args: any) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
         }),
         signerClient,
+        publicClient,
         args,
         validatorAddress,
       ),
