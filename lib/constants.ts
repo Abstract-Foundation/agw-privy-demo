@@ -2,6 +2,9 @@
 export const SMART_ACCOUNT_FACTORY_ADDRESS =
   "0xe86Bf72715dF28a0b7c3C8F596E7fE05a22A139c";
 
+// Batch caller contract deployment
+export const BATCH_CALLER_ADDRESS = "0xB4314a553eD1Aa0C3d90112fF2A81f9e414CB09d";
+
 // AA wallet validator contract deployment
 export const VALIDATOR_ADDRESS = "0x8d9A95c8Dc4736d76a8418A282274f94410D3933";
 

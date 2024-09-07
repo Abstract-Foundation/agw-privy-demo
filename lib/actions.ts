@@ -27,9 +27,6 @@ import {
   abstractTestnet,
 } from "viem/chains";
 import {
-  signTransaction as signTransaction_,
-  sendTransaction as core_sendTransaction,
-  SendTransactionParameters as core_SendTransactionParameters,
   signTypedData,
   getChainId,
   sendRawTransaction
@@ -53,13 +50,12 @@ import {
   SignEip712TransactionReturnType,
   ZksyncTransactionRequest,
   ZksyncTransactionSerializable,
-  SignTransactionParameters,
-  SignTransactionReturnType,
   SignEip712TransactionParameters,
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
+import {BATCH_CALLER_ADDRESS} from "./constants";
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
 
@@ -134,7 +130,7 @@ export type AssertEip712RequestParameters = ExactPartial<
   SendTransactionParameters<typeof abstractTestnet>
 >
 
-export async function signEip712Transaction<
+export async function signTransaction<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -206,21 +202,7 @@ export async function signEip712Transaction<
   ) as SignEip712TransactionReturnType
 }
 
-export async function signTransaction<
-  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-  account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
->(
-  client: Client<Transport, ChainEIP712, Account>,
-  signerClient: WalletClient<Transport, chain, account>,
-  args: SignTransactionParameters<chain, account, chainOverride>,
-  validatorAddress: Hex,
-): Promise<SignTransactionReturnType> {
-  if (isEIP712Transaction(args)) return signEip712Transaction(client, signerClient, args, validatorAddress)
-  return await signTransaction_(client, args as any)
-}
-
-export async function sendEip712Transaction<
+export async function sendTransaction<
   const request extends SendTransactionRequest<chain, chainOverride>,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
@@ -288,38 +270,12 @@ export async function sendEip712Transaction<
   }
 }
 
-export async function sendTransaction<
-  const request extends SendTransactionRequest<chain, chainOverride>,
-  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-  account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
->(
-  client: Client<Transport, ChainEIP712, Account>,
-  signerClient: WalletClient<Transport, chain, account>,
-  parameters: SendTransactionParameters<chain, account, chainOverride, request>,
-  validatorAddress: Hex,
-): Promise<SendTransactionReturnType> {
-  if (isEIP712Transaction(parameters))
-    return sendEip712Transaction(
-      client,
-      signerClient,
-      parameters as SendEip712TransactionParameters,
-      validatorAddress,
-    )
-  return core_sendTransaction(
-    client,
-    parameters as core_SendTransactionParameters,
-  )
-}
-
 type Call = {
   target: Address
   allowFailure: boolean
   value: bigint
   callData: Hex
 }
-
-const BATCH_CALLER_ADDRESS = "0xB4314a553eD1Aa0C3d90112fF2A81f9e414CB09d";
 
 export async function sendTransactionBatch<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -374,7 +330,7 @@ export async function sendTransactionBatch<
     type: "eip712",
   } as any;
 
-  return sendEip712Transaction(client, signerClient, batchTransaction, validatorAddress);
+  return sendTransaction(client, signerClient, batchTransaction, validatorAddress);
 }
 
 export async function writeContract<
