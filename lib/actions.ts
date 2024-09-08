@@ -288,10 +288,10 @@ export async function signTransactionAsSigner<
 }
 
 export async function sendTransaction<
-  const request extends SendTransactionRequest<chain, chainOverride>,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  const request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>,
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -304,7 +304,68 @@ export async function sendTransaction<
   >,
   validatorAddress: Hex,
 ): Promise<SendEip712TransactionReturnType> {
-  return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, false);
+  const isDeployed = await isSmartAccountDeployed(publicClient, client.account.address);
+  if (!isDeployed) {
+    const initialCall = {
+      target: parameters.to,
+      allowFailure: false,
+      value: parameters.value ?? 0,
+      callData: parameters.data ?? '0x',
+    } as Call;
+  
+    // Create calldata for initializing the proxy account
+    const initializerCallData = encodeFunctionData({
+      abi: [{
+        name: 'initialize',
+        type: 'function',
+        inputs: [
+          { name: 'initialK1Owner', type: 'address' },
+          { name: 'initialK1Validator', type: 'address' },
+          { name: 'modules', type: 'bytes[]' },
+          {
+            name: 'initCall',
+            type: 'tuple',
+            components: [
+              { name: 'target', type: 'address' },
+              { name: 'allowFailure', type: 'bool' },
+              { name: 'value', type: 'uint256' },
+              { name: 'callData', type: 'bytes' }
+            ]
+          }
+        ],
+        outputs: [],
+        stateMutability: 'nonpayable'
+      }],
+      functionName: 'initialize',
+      args: [
+        signerClient.account!.address,
+        validatorAddress,
+        [],
+        initialCall
+      ]
+    });
+
+    const addressBytes = toBytes(signerClient.account!.address);
+    const salt = keccak256(addressBytes);
+    const deploymentCalldata = encodeFunctionData({
+      abi: AccountFactoryAbi,
+      functionName: 'deployAccount',
+      args: [salt, initializerCallData]
+    });
+
+    const transactionPayload = {
+      to: SMART_ACCOUNT_FACTORY_ADDRESS,
+      data: deploymentCalldata,
+      value: parameters.value ?? 0,
+      paymaster: parameters.paymaster,
+      paymasterInput: parameters.paymasterInput,
+      type: "eip712",
+    } as any;
+
+    return _sendTransaction(client, signerClient, publicClient, transactionPayload, validatorAddress, true);
+  } else {
+    return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, false);
+  }
 }
 
 export async function _sendTransaction<
