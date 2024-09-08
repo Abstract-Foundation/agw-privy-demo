@@ -154,6 +154,7 @@ export async function signTransaction<
   signerClient: WalletClient<Transport, chain, account>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
+  useSignerAddress: boolean = false,
 ): Promise<SignEip712TransactionReturnType> {
   const {
     account: account_ = client.account,
@@ -168,6 +169,7 @@ export async function signTransaction<
       docsPath: '/docs/actions/wallet/signTransaction',
     })
   const smartAccount = parseAccount(account_)
+  const fromAccount = useSignerAddress ? signerClient.account! : smartAccount;
 
   assertEip712Request({
     account: smartAccount,
@@ -194,7 +196,7 @@ export async function signTransaction<
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
-    from: smartAccount.address,
+    from: fromAccount.address,
     type: 'eip712',
   })
 
@@ -203,85 +205,22 @@ export async function signTransaction<
     account: signerClient.account!
   });
 
-  const signature = encodeAbiParameters(
-    parseAbiParameters(["bytes", "address", "bytes[]"]),
-    [rawSignature, validatorAddress, []]
-  );
-
-  return chain?.serializers?.transaction(
-    {
-      chainId,
-      ...transaction,
-      customSignature: signature,
-      type: 'eip712' as any,
-    },
-    { r: '0x0', s: '0x0', v: 0n },
-  ) as SignEip712TransactionReturnType
-}
-
-// TODO: reduce code duplication with signTransaction
-export async function signTransactionAsSigner<
-  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-  account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
->(
-  client: Client<Transport, ChainEIP712, Account>,
-  signerClient: WalletClient<Transport, chain, account>,
-  args: SignEip712TransactionParameters<chain, account, chainOverride>,
-): Promise<SignEip712TransactionReturnType> {
-  const {
-    account: account_ = client.account,
-    chain = client.chain,
-    ...transaction
-  } = args
-  // TODO: open up typing to allow for eip712 transactions
-  transaction.type = "eip712" as any;
-
-  if (!account_)
-    throw new AccountNotFoundError({
-      docsPath: '/docs/actions/wallet/signTransaction',
-    })
-  const smartAccount = parseAccount(account_)
-
-  assertEip712Request({
-    account: smartAccount,
-    chain,
-    ...(transaction as AssertEip712RequestParameters),
-  })
-
-  if (!chain || !ALLOWED_CHAINS.includes(chain)) {
-    throw new BaseError('Invalid chain specified');
+  let signature;
+  if (useSignerAddress) {
+    signature = rawSignature;
+  } else {
+    // Match the expect signature format of the AGW smart account
+    signature = encodeAbiParameters(
+      parseAbiParameters(["bytes", "address", "bytes[]"]),
+      [rawSignature, validatorAddress, []]
+    );
   }
 
-  if (!chain?.custom?.getEip712Domain)
-    throw new BaseError('`getEip712Domain` not found on chain.')
-  if (!chain?.serializers?.transaction)
-    throw new BaseError('transaction serializer not found on chain.')
-
-  const chainId = await getAction(client, getChainId, 'getChainId')({})
-  if (chain !== null)
-    assertCurrentChain({
-      currentChainId: chainId,
-      chain: chain,
-    })
-
-  const eip712Domain = chain?.custom.getEip712Domain({
-    ...transaction,
-    chainId,
-    from: signerClient.account?.address!,
-    type: 'eip712',
-  });
-
-  const signature = await signTypedData(signerClient, {
-    ...eip712Domain,
-    account: signerClient.account!
-  });
-
   return chain?.serializers?.transaction(
     {
       chainId,
       ...transaction,
-      from: signerClient.account?.address!,
+      from: fromAccount.address,
       customSignature: signature,
       type: 'eip712' as any,
     },
@@ -409,18 +348,10 @@ export async function _sendTransaction<
       })
     }
 
-    let serializedTransaction;
-    if (isInitialTransaction) {
-      serializedTransaction = await signTransactionAsSigner(client, signerClient, {
-        ...request,
-        chainId,
-      } as any)
-    } else {
-      serializedTransaction = await signTransaction(client, signerClient, {
-        ...request,
-        chainId,
-      } as any, validatorAddress)
-    }
+    const serializedTransaction = await signTransaction(client, signerClient, {
+      ...request,
+      chainId,
+    } as any, validatorAddress, isInitialTransaction);
 
     return await getAction(
       client,
