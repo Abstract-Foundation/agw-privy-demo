@@ -263,14 +263,11 @@ export async function signTransactionAsSigner<
       chain: chain,
     })
 
-  const signerNonce = await publicClient.getTransactionCount({address: signerClient.account?.address!});
-
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
     from: signerClient.account?.address!,
     type: 'eip712',
-    nonce: signerNonce,
   });
 
   const signature = await signTypedData(signerClient, {
@@ -330,8 +327,6 @@ export async function _sendTransaction<
 ): Promise<SendEip712TransactionReturnType> {
   const { chain = client.chain } = parameters
 
-  console.log("CALLED")
-
   if (!signerClient.account)
     throw new AccountNotFoundError({
       docsPath: '/docs/actions/wallet/sendTransaction',
@@ -342,10 +337,10 @@ export async function _sendTransaction<
     assertEip712Request(parameters)
 
     // Prepare the request for signing (assign appropriate fees, etc.)
-    const request = await prepareTransactionRequest(client, publicClient, {
+    const request = await prepareTransactionRequest(client, signerClient, publicClient, {
       ...parameters,
       parameters: ['gas', 'nonce', 'fees'],
-    } as any) as any
+    } as any, isInitialTransaction)
 
     let chainId: number | undefined
     if (chain !== null) {
@@ -367,8 +362,6 @@ export async function _sendTransaction<
         ...request,
         chainId,
       } as any, validatorAddress)
-
-      console.log("serialized", serializedTransaction)
     }
 
     return await getAction(
@@ -475,14 +468,14 @@ export async function sendTransactionBatch<
       }],
       functionName: 'initialize',
       args: [
-        client.account.address,
+        signerClient.account!.address,
         validatorAddress,
         [],
         initialCall
       ]
     });
 
-    const addressBytes = toBytes(client.account.address);
+    const addressBytes = toBytes(signerClient.account!.address);
     const salt = keccak256(addressBytes);
     const deploymentCalldata = encodeFunctionData({
       abi: AccountFactoryAbi,
