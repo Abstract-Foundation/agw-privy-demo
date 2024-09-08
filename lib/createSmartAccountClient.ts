@@ -7,6 +7,8 @@ import {
   Hex,
   EIP1193Provider,
   Client,
+  createPublicClient,
+  http,
 } from 'viem';
 import { ChainEIP712 } from 'viem/zksync';
 import { globalWalletActions, AbstractWalletActions } from './actions';
@@ -47,6 +49,12 @@ export function createAbstractClient<
     transport: custom(eip1193Provider)
   });
 
-  const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient));
+  // Create public client for reading contract code
+  const publicClient = createPublicClient({
+    chain: chain,
+    transport: http()
+  })
+
+  const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient, publicClient));
   return abstractClient as AbstractClient<TTransport>;
 }

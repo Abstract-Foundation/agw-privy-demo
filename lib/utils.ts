@@ -2,8 +2,17 @@ import {
   TypedDataDefinition,
   TypedData,
   TypedDataParameter,
+  Address,
+  PublicClient,
+  Hex,
+  toBytes,
+  keccak256,
+  Transport
 } from 'viem';
 import { SignTypedDataParams } from '@privy-io/react-auth';
+import ABI from "./AccountFactory.json";
+import { SMART_ACCOUNT_FACTORY_ADDRESS } from './constants';
+import { ChainEIP712 } from 'viem/zksync';
 
 type MessageTypes = Record<string, { name: string; type: string }[]>
 
@@ -65,4 +74,24 @@ export function convertToSignTypedDataParams<
   };
 
   return result;
+}
+
+export async function getSmartAccountAddressFromInitialSigner<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined
+>(
+  initialSigner: Address, publicClient: PublicClient<Transport, chain>
+): Promise<Hex> {
+  // Generate salt based off address
+  const addressBytes = toBytes(initialSigner);
+  const salt = keccak256(addressBytes);
+
+  // Get the deployed account address
+  const accountAddress = await publicClient.readContract({
+    address: SMART_ACCOUNT_FACTORY_ADDRESS,
+    abi: ABI,
+    functionName: 'getAddressForSalt',
+    args: [salt],
+  }) as Hex;
+
+  return accountAddress;
 }

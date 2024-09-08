@@ -10,11 +10,8 @@ import {
   ExactPartial,
   OneOf,
   SendTransactionRequest,
-  SendTransactionParameters,
   SendTransactionReturnType,
   Chain,
-  createPublicClient,
-  http,
   ContractFunctionArgs,
   ContractFunctionName,
   WriteContractParameters,
@@ -22,6 +19,9 @@ import {
   EncodeFunctionDataParameters,
   encodeFunctionData,
   Abi,
+  PublicClient,
+  toBytes,
+  keccak256
 } from "viem";
 import {
   abstractTestnet,
@@ -55,7 +55,8 @@ import {
   Eip712WalletActions
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
-import {BATCH_CALLER_ADDRESS} from "./constants";
+import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import AccountFactoryAbi from "./AccountFactory.json";
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
 
@@ -90,6 +91,20 @@ export class InvalidEip712TransactionError extends BaseError {
   }
 }
 
+export async function isSmartAccountDeployed<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined
+>(publicClient: PublicClient<Transport, chain>, address: Hex): Promise<boolean> {
+  try {
+    const bytecode = await publicClient.getCode({
+      address: address
+    })
+    return bytecode !== null && bytecode !== '0x' && bytecode !== undefined
+  } catch (error) {
+    console.error('Error checking address:', error)
+    return false
+  }
+}
+
 export type SendTransactionBatchParameters<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
@@ -97,7 +112,7 @@ export type SendTransactionBatchParameters<
   request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>
 > = {
   // TODO: figure out if more fields need to be lifted up
-  calls: SendTransactionParameters<chain, account, chainOverride, request>[];
+  calls: SendEip712TransactionParameters<chain, account, chainOverride, request>[];
   paymaster?: Address | undefined
   paymasterInput?: Hex | undefined
 };
@@ -127,8 +142,42 @@ export function assertEip712Request(args: AssertEip712RequestParameters) {
 }
 
 export type AssertEip712RequestParameters = ExactPartial<
-  SendTransactionParameters<typeof abstractTestnet>
+  SendEip712TransactionParameters<typeof abstractTestnet>
 >
+
+function getInitializerCalldata(initialOwnerAddress: Address, validatorAddress: Address, initialCall: Call): Hex {
+  return encodeFunctionData({
+    abi: [{
+      name: 'initialize',
+      type: 'function',
+      inputs: [
+        { name: 'initialK1Owner', type: 'address' },
+        { name: 'initialK1Validator', type: 'address' },
+        { name: 'modules', type: 'bytes[]' },
+        {
+          name: 'initCall',
+          type: 'tuple',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'allowFailure', type: 'bool' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' }
+          ]
+        }
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    }],
+    functionName: 'initialize',
+    args: [
+      initialOwnerAddress,
+      validatorAddress,
+      [],
+      initialCall
+    ]
+  });
+
+}
 
 export async function signTransaction<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -139,23 +188,27 @@ export async function signTransaction<
   signerClient: WalletClient<Transport, chain, account>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
+  useSignerAddress: boolean = false,
 ): Promise<SignEip712TransactionReturnType> {
   const {
     account: account_ = client.account,
     chain = client.chain,
     ...transaction
   } = args
+  // TODO: open up typing to allow for eip712 transactions
+  transaction.type = "eip712" as any;
 
   if (!account_)
     throw new AccountNotFoundError({
       docsPath: '/docs/actions/wallet/signTransaction',
     })
   const smartAccount = parseAccount(account_)
+  const fromAccount = useSignerAddress ? signerClient.account! : smartAccount;
 
   assertEip712Request({
     account: smartAccount,
     chain,
-    ...(args as AssertEip712RequestParameters),
+    ...(transaction as AssertEip712RequestParameters),
   })
 
   if (!chain || !ALLOWED_CHAINS.includes(chain)) {
@@ -177,7 +230,7 @@ export async function signTransaction<
   const eip712Domain = chain?.custom.getEip712Domain({
     ...transaction,
     chainId,
-    from: smartAccount.address,
+    from: fromAccount.address,
     type: 'eip712',
   })
 
@@ -186,15 +239,22 @@ export async function signTransaction<
     account: signerClient.account!
   });
 
-  const signature = encodeAbiParameters(
-    parseAbiParameters(["bytes", "address", "bytes[]"]),
-    [rawSignature, validatorAddress, []]
-  );
+  let signature;
+  if (useSignerAddress) {
+    signature = rawSignature;
+  } else {
+    // Match the expect signature format of the AGW smart account
+    signature = encodeAbiParameters(
+      parseAbiParameters(["bytes", "address", "bytes[]"]),
+      [rawSignature, validatorAddress, []]
+    );
+  }
 
   return chain?.serializers?.transaction(
     {
       chainId,
       ...transaction,
+      from: fromAccount.address,
       customSignature: signature,
       type: 'eip712' as any,
     },
@@ -203,13 +263,14 @@ export async function signTransaction<
 }
 
 export async function sendTransaction<
-  const request extends SendTransactionRequest<chain, chainOverride>,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  const request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>,
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: SendEip712TransactionParameters<
     chain,
     account,
@@ -217,6 +278,53 @@ export async function sendTransaction<
     request
   >,
   validatorAddress: Hex,
+): Promise<SendEip712TransactionReturnType> {
+  const isDeployed = await isSmartAccountDeployed(publicClient, client.account.address);
+  if (!isDeployed) {
+    const initialCall = {
+      target: parameters.to,
+      allowFailure: false,
+      value: parameters.value ?? 0,
+      callData: parameters.data ?? '0x',
+    } as Call;
+  
+    // Create calldata for initializing the proxy account
+    const initializerCallData = getInitializerCalldata(signerClient.account!.address, validatorAddress, initialCall);
+    const addressBytes = toBytes(signerClient.account!.address);
+    const salt = keccak256(addressBytes);
+    const deploymentCalldata = encodeFunctionData({
+      abi: AccountFactoryAbi,
+      functionName: 'deployAccount',
+      args: [salt, initializerCallData]
+    });
+
+    // Override transaction fields
+    parameters.to = SMART_ACCOUNT_FACTORY_ADDRESS;
+    parameters.data = deploymentCalldata;
+
+    return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, true);
+  } else {
+    return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, false);
+  }
+}
+
+export async function _sendTransaction<
+  const request extends SendTransactionRequest<chain, chainOverride>,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+>(
+  client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
+  parameters: SendEip712TransactionParameters<
+    chain,
+    account,
+    chainOverride,
+    request
+  >,
+  validatorAddress: Hex,
+  isInitialTransaction: boolean,
 ): Promise<SendEip712TransactionReturnType> {
   const { chain = client.chain } = parameters
 
@@ -226,19 +334,14 @@ export async function sendTransaction<
     })
   const account = parseAccount(signerClient.account)
 
-  const publicClient = createPublicClient({
-    chain: chain!,
-    transport: http(),
-  });
-
   try {
-    assertEip712Request(parameters)
+    // assertEip712Request(parameters)
 
     // Prepare the request for signing (assign appropriate fees, etc.)
-    const request = await prepareTransactionRequest(client, publicClient, {
+    const request = await prepareTransactionRequest(client, signerClient, publicClient, {
       ...parameters,
       parameters: ['gas', 'nonce', 'fees'],
-    } as any)
+    } as any, isInitialTransaction)
 
     let chainId: number | undefined
     if (chain !== null) {
@@ -252,7 +355,7 @@ export async function sendTransaction<
     const serializedTransaction = await signTransaction(client, signerClient, {
       ...request,
       chainId,
-    } as any, validatorAddress)
+    } as any, validatorAddress, isInitialTransaction);
 
     return await getAction(
       client,
@@ -285,6 +388,7 @@ export async function sendTransactionBatch<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: SendTransactionBatchParameters<chain, account, chainOverride, request>,
   validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
@@ -321,16 +425,49 @@ export async function sendTransactionBatch<
   // Get cumulative value passed in
   const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
 
-  const batchTransaction = {
-    to: BATCH_CALLER_ADDRESS as Hex,
-    data: batchCallData,
-    value: totalValue,
-    paymaster: parameters.paymaster,
-    paymasterInput: parameters.paymasterInput,
-    type: "eip712",
-  } as any;
+  let batchTransaction;
 
-  return sendTransaction(client, signerClient, batchTransaction, validatorAddress);
+  const isDeployed = await isSmartAccountDeployed(publicClient, client.account.address);
+  if (!isDeployed) {
+    const initialCall = {
+      target: BATCH_CALLER_ADDRESS,
+      allowFailure: false,
+      value: totalValue,
+      callData: batchCallData,
+    } as Call;
+  
+    // Create calldata for initializing the proxy account
+    const initializerCallData = getInitializerCalldata(signerClient.account!.address, validatorAddress, initialCall);
+    const addressBytes = toBytes(signerClient.account!.address);
+    const salt = keccak256(addressBytes);
+    const deploymentCalldata = encodeFunctionData({
+      abi: AccountFactoryAbi,
+      functionName: 'deployAccount',
+      args: [salt, initializerCallData]
+    });
+
+    batchTransaction = {
+      to: SMART_ACCOUNT_FACTORY_ADDRESS,
+      data: deploymentCalldata,
+      value: totalValue,
+      paymaster: parameters.paymaster,
+      paymasterInput: parameters.paymasterInput,
+      type: "eip712",
+    } as any;
+
+    return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress, true);
+  } else {
+    batchTransaction = {
+      to: BATCH_CALLER_ADDRESS as Hex,
+      data: batchCallData,
+      value: totalValue,
+      paymaster: parameters.paymaster,
+      paymasterInput: parameters.paymasterInput,
+      type: "eip712",
+    } as any;
+
+    return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress, false);
+  }
 }
 
 export async function writeContract<
@@ -347,6 +484,7 @@ export async function writeContract<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   parameters: WriteContractParameters<
     abi,
     functionName,
@@ -383,6 +521,7 @@ export async function writeContract<
     return await sendTransaction(
       client,
       signerClient,
+      publicClient,
       {
         data: `${data}${dataSuffix ? dataSuffix.replace('0x', '') : ''}`,
         to: address,
@@ -419,20 +558,22 @@ export function globalWalletActions<
 >(
   validatorAddress: Hex,
   signerClient: WalletClient<transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
 ) {
   return (
     client: Client<transport, ChainEIP712, Account>,
   ): AbstractWalletActions<chain, account> => ({
-    sendTransaction: (args) => sendTransaction(client, signerClient, args, validatorAddress),
-    sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, args, validatorAddress),
+    sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
+    sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
-    deployContract: (args) => deployContract(client, args),
+    deployContract: (args) => deployContract(client, args), // TODO: update this
     writeContract: (args) =>
       writeContract(
         Object.assign(client, {
-          sendTransaction: (args: any) => sendTransaction(client, signerClient, args, validatorAddress),
+          sendTransaction: (args: any) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
         }),
         signerClient,
+        publicClient,
         args,
         validatorAddress,
       ),

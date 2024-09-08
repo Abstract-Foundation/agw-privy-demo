@@ -24,7 +24,8 @@ import {
   SendTransactionParameters,
   BaseError,
   formatGwei,
-  PublicClient
+  PublicClient,
+  WalletClient
 } from "viem";
 
 import {
@@ -263,6 +264,7 @@ export async function prepareTransactionRequest<
   chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
   publicClient: PublicClient<Transport, chain>,
   args: PrepareTransactionRequestParameters<
     chain,
@@ -271,6 +273,7 @@ export async function prepareTransactionRequest<
     accountOverride,
     request
   >,
+  isInitialTransaction: boolean,
 ): Promise<
   PrepareTransactionRequestReturnType<
     chain,
@@ -281,15 +284,15 @@ export async function prepareTransactionRequest<
   >
 > {
   const {
-    account: account_ = client.account,
+    account: account_ = isInitialTransaction ? signerClient.account : client.account,
     chain,
     gas,
     nonce,
     nonceManager,
     parameters = defaultParameters,
   } = args
-  const smartAccount = parseAccount(account_!)
-  const request = { ...args, ...(smartAccount ? { from: smartAccount?.address } : {}) }
+  const initiatorAccount = parseAccount(account_!)
+  const request = { ...args, ...(initiatorAccount ? { from: initiatorAccount?.address } : {}) }
 
   let chainId: number | undefined
   async function getChainId(): Promise<number> {
@@ -303,11 +306,11 @@ export async function prepareTransactionRequest<
 
   if (parameters.includes('chainId')) request.chainId = await getChainId()
 
-  if (parameters.includes('nonce') && typeof nonce === 'undefined' && smartAccount) {
+  if (parameters.includes('nonce') && typeof nonce === 'undefined' && initiatorAccount) {
     if (nonceManager) {
       const chainId = await getChainId()
       request.nonce = await nonceManager.consume({
-        address: smartAccount.address,
+        address: initiatorAccount.address,
         chainId,
         client,
       })
@@ -317,7 +320,7 @@ export async function prepareTransactionRequest<
         getTransactionCount,
         'getTransactionCount',
       )({
-        address: smartAccount.address,
+        address: initiatorAccount.address,
         blockTag: 'pending',
       })
     }
@@ -329,7 +332,7 @@ export async function prepareTransactionRequest<
       typeof request.maxPriorityFeePerGas === 'undefined'
     ) {
       const estimateFeeRequest: EstimateFeeParameters<chain, account | undefined, ChainEIP712> = {
-        account: smartAccount,
+        account: initiatorAccount,
         to: request.to,
         value: request.value,
         data: request.data,
@@ -339,7 +342,7 @@ export async function prepareTransactionRequest<
         authorizationList: []
       };
       const { maxFeePerGas, maxPriorityFeePerGas } =
-        await estimateFee(publicClient, estimateFeeRequest)
+        await estimateFee(publicClient, estimateFeeRequest);
 
       if (
         typeof args.maxPriorityFeePerGas === 'undefined' &&
@@ -362,8 +365,8 @@ export async function prepareTransactionRequest<
       'estimateGas',
     )({
       ...request,
-      account: smartAccount
-        ? { address: smartAccount.address, type: 'json-rpc' }
+      account: initiatorAccount
+        ? { address: initiatorAccount.address, type: 'json-rpc' }
         : undefined,
     } as EstimateGasParameters)
 

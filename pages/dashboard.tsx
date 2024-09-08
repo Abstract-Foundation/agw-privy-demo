@@ -48,30 +48,30 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      // const transactionHash = await smartAccountClient.sendTransaction({
-      //   // account: smartAccountClient.account,
-      //   // chain: abstractTestnet,
-      //   to: NFT_ADDRESS,
-      //   data: mintData,
-      //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
-      //   paymasterInput: paymasterInput,
-      // });
-
-      const transactionHash = await smartAccountClient.sendTransactionBatch({
-        calls: [
-          {
-            to: NFT_ADDRESS,
-            data: mintData,
-            value: 0n
-          },
-          {
-            to: NFT_ADDRESS,
-            data: mintData,
-          }
-        ],
+      const transactionHash = await smartAccountClient.sendTransaction({
+        // account: smartAccountClient.account,
+        // chain: abstractTestnet,
+        to: NFT_ADDRESS,
+        data: mintData,
         paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
-      })
+      });
+
+      // const transactionHash = await smartAccountClient.sendTransactionBatch({
+      //   calls: [
+      //     {
+      //       to: NFT_ADDRESS,
+      //       data: mintData,
+      //       value: 0n
+      //     },
+      //     {
+      //       to: NFT_ADDRESS,
+      //       data: mintData,
+      //     }
+      //   ],
+      //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+      //   paymasterInput: paymasterInput,
+      // })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
