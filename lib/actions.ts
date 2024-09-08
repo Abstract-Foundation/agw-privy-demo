@@ -153,7 +153,6 @@ export async function signTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
-  publicClient: PublicClient<Transport, chain>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
 ): Promise<SignEip712TransactionReturnType> {
@@ -226,7 +225,6 @@ export async function signTransactionAsSigner<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
-  publicClient: PublicClient<Transport, chain>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
 ): Promise<SignEip712TransactionReturnType> {
   const {
@@ -353,16 +351,11 @@ export async function sendTransaction<
       args: [salt, initializerCallData]
     });
 
-    const transactionPayload = {
-      to: SMART_ACCOUNT_FACTORY_ADDRESS,
-      data: deploymentCalldata,
-      value: parameters.value ?? 0,
-      paymaster: parameters.paymaster,
-      paymasterInput: parameters.paymasterInput,
-      type: "eip712",
-    } as any;
+    // Override transaction fields
+    parameters.to = SMART_ACCOUNT_FACTORY_ADDRESS;
+    parameters.data = deploymentCalldata;
 
-    return _sendTransaction(client, signerClient, publicClient, transactionPayload, validatorAddress, true);
+    return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, true);
   } else {
     return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, false);
   }
@@ -414,12 +407,12 @@ export async function _sendTransaction<
 
     let serializedTransaction;
     if (isInitialTransaction) {
-      serializedTransaction = await signTransactionAsSigner(client, signerClient, publicClient, {
+      serializedTransaction = await signTransactionAsSigner(client, signerClient, {
         ...request,
         chainId,
       } as any)
     } else {
-      serializedTransaction = await signTransaction(client, signerClient, publicClient, {
+      serializedTransaction = await signTransaction(client, signerClient, {
         ...request,
         chainId,
       } as any, validatorAddress)
@@ -663,7 +656,7 @@ export function globalWalletActions<
   ): AbstractWalletActions<chain, account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
     sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
-    signTransaction: (args) => signTransaction(client, signerClient, publicClient, args, validatorAddress),
+    signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args), // TODO: update this
     writeContract: (args) =>
       writeContract(
