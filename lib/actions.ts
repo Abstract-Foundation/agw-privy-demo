@@ -145,6 +145,40 @@ export type AssertEip712RequestParameters = ExactPartial<
   SendEip712TransactionParameters<typeof abstractTestnet>
 >
 
+function getInitializerCalldata(initialOwnerAddress: Address, validatorAddress: Address, initialCall: Call): Hex {
+  return encodeFunctionData({
+    abi: [{
+      name: 'initialize',
+      type: 'function',
+      inputs: [
+        { name: 'initialK1Owner', type: 'address' },
+        { name: 'initialK1Validator', type: 'address' },
+        { name: 'modules', type: 'bytes[]' },
+        {
+          name: 'initCall',
+          type: 'tuple',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'allowFailure', type: 'bool' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' }
+          ]
+        }
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    }],
+    functionName: 'initialize',
+    args: [
+      initialOwnerAddress,
+      validatorAddress,
+      [],
+      initialCall
+    ]
+  });
+
+}
+
 export async function signTransaction<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
@@ -255,37 +289,7 @@ export async function sendTransaction<
     } as Call;
   
     // Create calldata for initializing the proxy account
-    const initializerCallData = encodeFunctionData({
-      abi: [{
-        name: 'initialize',
-        type: 'function',
-        inputs: [
-          { name: 'initialK1Owner', type: 'address' },
-          { name: 'initialK1Validator', type: 'address' },
-          { name: 'modules', type: 'bytes[]' },
-          {
-            name: 'initCall',
-            type: 'tuple',
-            components: [
-              { name: 'target', type: 'address' },
-              { name: 'allowFailure', type: 'bool' },
-              { name: 'value', type: 'uint256' },
-              { name: 'callData', type: 'bytes' }
-            ]
-          }
-        ],
-        outputs: [],
-        stateMutability: 'nonpayable'
-      }],
-      functionName: 'initialize',
-      args: [
-        signerClient.account!.address,
-        validatorAddress,
-        [],
-        initialCall
-      ]
-    });
-
+    const initializerCallData = getInitializerCalldata(signerClient.account!.address, validatorAddress, initialCall);
     const addressBytes = toBytes(signerClient.account!.address);
     const salt = keccak256(addressBytes);
     const deploymentCalldata = encodeFunctionData({
@@ -433,37 +437,7 @@ export async function sendTransactionBatch<
     } as Call;
   
     // Create calldata for initializing the proxy account
-    const initializerCallData = encodeFunctionData({
-      abi: [{
-        name: 'initialize',
-        type: 'function',
-        inputs: [
-          { name: 'initialK1Owner', type: 'address' },
-          { name: 'initialK1Validator', type: 'address' },
-          { name: 'modules', type: 'bytes[]' },
-          {
-            name: 'initCall',
-            type: 'tuple',
-            components: [
-              { name: 'target', type: 'address' },
-              { name: 'allowFailure', type: 'bool' },
-              { name: 'value', type: 'uint256' },
-              { name: 'callData', type: 'bytes' }
-            ]
-          }
-        ],
-        outputs: [],
-        stateMutability: 'nonpayable'
-      }],
-      functionName: 'initialize',
-      args: [
-        signerClient.account!.address,
-        validatorAddress,
-        [],
-        initialCall
-      ]
-    });
-
+    const initializerCallData = getInitializerCalldata(signerClient.account!.address, validatorAddress, initialCall);
     const addressBytes = toBytes(signerClient.account!.address);
     const salt = keccak256(addressBytes);
     const deploymentCalldata = encodeFunctionData({
