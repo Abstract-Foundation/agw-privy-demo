@@ -10,7 +10,6 @@ import {
   ExactPartial,
   OneOf,
   SendTransactionRequest,
-  SendTransactionParameters,
   SendTransactionReturnType,
   Chain,
   ContractFunctionArgs,
@@ -113,7 +112,7 @@ export type SendTransactionBatchParameters<
   request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>
 > = {
   // TODO: figure out if more fields need to be lifted up
-  calls: SendTransactionParameters<chain, account, chainOverride, request>[];
+  calls: SendEip712TransactionParameters<chain, account, chainOverride, request>[];
   paymaster?: Address | undefined
   paymasterInput?: Hex | undefined
 };
@@ -143,7 +142,7 @@ export function assertEip712Request(args: AssertEip712RequestParameters) {
 }
 
 export type AssertEip712RequestParameters = ExactPartial<
-  SendTransactionParameters<typeof abstractTestnet>
+  SendEip712TransactionParameters<typeof abstractTestnet>
 >
 
 export async function signTransaction<
@@ -161,6 +160,8 @@ export async function signTransaction<
     chain = client.chain,
     ...transaction
   } = args
+  // TODO: open up typing to allow for eip712 transactions
+  transaction.type = "eip712" as any;
 
   if (!account_)
     throw new AccountNotFoundError({
@@ -171,7 +172,7 @@ export async function signTransaction<
   assertEip712Request({
     account: smartAccount,
     chain,
-    ...(args as AssertEip712RequestParameters),
+    ...(transaction as AssertEip712RequestParameters),
   })
 
   if (!chain || !ALLOWED_CHAINS.includes(chain)) {
@@ -218,6 +219,7 @@ export async function signTransaction<
   ) as SignEip712TransactionReturnType
 }
 
+// TODO: reduce code duplication with signTransaction
 export async function signTransactionAsSigner<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
@@ -232,6 +234,8 @@ export async function signTransactionAsSigner<
     chain = client.chain,
     ...transaction
   } = args
+  // TODO: open up typing to allow for eip712 transactions
+  transaction.type = "eip712" as any;
 
   if (!account_)
     throw new AccountNotFoundError({
@@ -242,7 +246,7 @@ export async function signTransactionAsSigner<
   assertEip712Request({
     account: smartAccount,
     chain,
-    ...(args as AssertEip712RequestParameters),
+    ...(transaction as AssertEip712RequestParameters),
   })
 
   if (!chain || !ALLOWED_CHAINS.includes(chain)) {
@@ -388,7 +392,7 @@ export async function _sendTransaction<
   const account = parseAccount(signerClient.account)
 
   try {
-    assertEip712Request(parameters)
+    // assertEip712Request(parameters)
 
     // Prepare the request for signing (assign appropriate fees, etc.)
     const request = await prepareTransactionRequest(client, signerClient, publicClient, {
