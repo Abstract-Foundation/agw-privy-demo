@@ -151,7 +151,6 @@ export async function signTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
-  publicClient: PublicClient<Transport, chain>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
 ): Promise<SignEip712TransactionReturnType> {
@@ -280,7 +279,7 @@ export async function _sendTransaction<
       })
     }
 
-    const serializedTransaction = await signTransaction(client, signerClient, publicClient, {
+    const serializedTransaction = await signTransaction(client, signerClient, {
       ...request,
       chainId,
     } as any, validatorAddress)
@@ -464,7 +463,7 @@ export function globalWalletActions<
   ): AbstractWalletActions<chain, account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
     sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
-    signTransaction: (args) => signTransaction(client, signerClient, publicClient, args, validatorAddress),
+    signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args), // TODO: update this
     writeContract: (args) =>
       writeContract(

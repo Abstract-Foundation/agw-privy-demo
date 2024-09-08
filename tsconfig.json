@@ -21,6 +21,7 @@
     "exactOptionalPropertyTypes": false,
     "ignoreDeprecations": "5.0",
     "importsNotUsedAsValues": "preserve",
+    "noErrorTruncation": true
   },
   "include": [
     "next-env.d.ts",

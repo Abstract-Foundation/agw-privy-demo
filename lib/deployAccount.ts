@@ -1,19 +1,18 @@
 import {
+  Address,
   encodeFunctionData,
   Hex,
   toBytes,
   keccak256,
   WalletClient,
-  Address,
-  Account,
   Transport,
   WriteContractParameters,
+  Account,
 } from 'viem'
-import { 
-  getGeneralPaymasterInput,
-  ChainEIP712,
+import {
+  ChainEIP712
 } from 'viem/zksync';
-import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import { BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS } from "./constants";
 import AccountFactoryAbi from "./AccountFactory.json";
 
 type Call = {
@@ -26,7 +25,6 @@ type Call = {
 export async function deployAccountWithInitializer<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
 >(
   signerClient: WalletClient<Transport, chain, account>,
   validatorAddress: Address,
@@ -75,14 +73,15 @@ export async function deployAccountWithInitializer<
     ]
   });
 
-  const writeContractParams: WriteContractParameters<typeof AccountFactoryAbi, 'deployAccount'> = {
-    account: signerClient.account!,
+  const writeContractParams = {
+    account: signerClient.account as Account,
     chain: signerClient.chain,
-    address: SMART_ACCOUNT_FACTORY_ADDRESS,
+    address: SMART_ACCOUNT_FACTORY_ADDRESS as Hex,
     abi: AccountFactoryAbi,
     functionName: 'deployAccount',
     args: [salt, initializerCallData],
-  };
+    value: initValue,
+  } as WriteContractParameters<typeof AccountFactoryAbi, 'deployAccount', [Hex, Hex], typeof signerClient.chain, typeof signerClient.account>;
 
   const hash = await signerClient.writeContract(writeContractParams);
   return hash;
