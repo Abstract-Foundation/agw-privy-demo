@@ -1,85 +1,89 @@
-import { createPublicClient, http, encodeFunctionData, Hex, toBytes, keccak256, Client, WalletClient, PublicClient, Address } from 'viem'
-import { getGeneralPaymasterInput } from 'viem/zksync';
-import { abstractTestnet } from 'viem/chains'
-import { VALIDATOR_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, AA_FACTORY_PAYMASTER_ADDRESS } from "../lib/constants";
-import ABI from "../lib/AccountFactory.json";
+import {
+  encodeFunctionData,
+  Hex,
+  toBytes,
+  keccak256,
+  WalletClient,
+  Address,
+  Account,
+  Transport,
+  WriteContractParameters,
+} from 'viem'
+import { 
+  getGeneralPaymasterInput,
+  ChainEIP712,
+} from 'viem/zksync';
+import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import AccountFactoryAbi from "./AccountFactory.json";
 
-export async function getSmartAccountAddressFromInnitialSigner(initialSigner: Address, publicClient: PublicClient): Promise<Hex> {
-  // Generate salt based off address
-  const addressBytes = toBytes(initialSigner);
+type Call = {
+  target: Address
+  allowFailure: boolean
+  value: bigint
+  callData: Hex
+}
+
+export async function deployAccountWithInitializer<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+>(
+  signerClient: WalletClient<Transport, chain, account>,
+  validatorAddress: Address,
+  initCallData: Hex,
+  initValue: bigint,
+): Promise<Hex> {
+  const addressBytes = toBytes(signerClient.account!.address);
   const salt = keccak256(addressBytes);
 
-  // Get the deployed account address
-  const accountAddress = await publicClient.readContract({
+  const initialCall = {
+    target: BATCH_CALLER_ADDRESS,
+    allowFailure: false,
+    value: initValue,
+    callData: initCallData,
+  } as Call;
+
+  // Create calldata for initializing the proxy account
+  const initializerCallData = encodeFunctionData({
+    abi: [{
+      name: 'initialize',
+      type: 'function',
+      inputs: [
+        { name: 'initialK1Owner', type: 'address' },
+        { name: 'initialK1Validator', type: 'address' },
+        { name: 'modules', type: 'bytes[]' },
+        {
+          name: 'initCall',
+          type: 'tuple',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'allowFailure', type: 'bool' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' }
+          ]
+        }
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    }],
+    functionName: 'initialize',
+    args: [
+      signerClient.account!.address,
+      validatorAddress,
+      [],
+      initialCall
+    ]
+  });
+
+  const writeContractParams: WriteContractParameters<typeof AccountFactoryAbi, 'deployAccount'> = {
+    account: signerClient.account!,
+    chain: signerClient.chain,
     address: SMART_ACCOUNT_FACTORY_ADDRESS,
-    abi: ABI,
-    functionName: 'getAddressForSalt',
-    args: [salt],
-  }) as Hex;
+    abi: AccountFactoryAbi,
+    functionName: 'deployAccount',
+    args: [salt, initializerCallData],
+  };
 
-  return accountAddress;
-
-  // // No need to deploy if the account already exists
-  // const accountExists = await isSmartAccountDeployed(publicClient, accountAddress);
-  // if (accountExists) {
-  //   return accountAddress;
-  // }
-
-  // // Define the call struct
-  // const call = {
-  //   target: '0x0000000000000000000000000000000000000000' as Hex,
-  //   allowFailure: false,
-  //   value: 0n,
-  //   callData: '0x' as Hex,
-  // }
-
-  // // Create calldata for initializing the proxy account
-  // const initializer = encodeFunctionData({
-  //   abi: [{
-  //     name: 'initialize',
-  //     type: 'function',
-  //     inputs: [
-  //       { name: 'initialK1Owner', type: 'address' },
-  //       { name: 'initialK1Validator', type: 'address' },
-  //       { name: 'modules', type: 'bytes[]' },
-  //       {
-  //         name: 'initCall',
-  //         type: 'tuple',
-  //         components: [
-  //           { name: 'target', type: 'address' },
-  //           { name: 'allowFailure', type: 'bool' },
-  //           { name: 'value', type: 'uint256' },
-  //           { name: 'callData', type: 'bytes' }
-  //         ]
-  //       }
-  //     ],
-  //     outputs: [],
-  //     stateMutability: 'nonpayable'
-  //   }],
-  //   functionName: 'initialize',
-  //   args: [
-  //     privyClient.account.address,
-  //     VALIDATOR_ADDRESS,
-  //     [],
-  //     call
-  //   ]
-  // })
-
-  // const paymasterInput = getGeneralPaymasterInput({
-  //   innerInput: '0x',
-  // });
-
-  // // Deploy the account
-  // const hash = await privyClient.writeContract({
-  //   address: SMART_ACCOUNT_FACTORY_ADDRESS,
-  //   abi: ABI,
-  //   functionName: 'deployAccount',
-  //   args: [salt, initializer],
-  //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS, 
-  //   paymasterInput: paymasterInput
-  // })
-
-  // // Wait for the transaction to be mined
-  // await publicClient.waitForTransactionReceipt({ hash })
-  // return accountAddress as Hex;
+  const hash = await signerClient.writeContract(writeContractParams);
+  return hash;
 }

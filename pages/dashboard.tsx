@@ -69,8 +69,8 @@ export default function DashboardPage() {
             data: mintData,
           }
         ],
-        paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
-        paymasterInput: paymasterInput,
+        // paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+        // paymasterInput: paymasterInput,
       })
 
       toast.update(toastId, {

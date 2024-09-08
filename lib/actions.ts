@@ -55,6 +55,7 @@ import {
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
 import {BATCH_CALLER_ADDRESS} from "./constants";
+import { deployAccountWithInitializer } from './deployAccount';
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
 
@@ -352,9 +353,10 @@ export async function sendTransactionBatch<
   // Get cumulative value passed in
   const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
 
-  if (!isSmartAccountDeployed(publicClient, client.account.address)) {
-
-  } 
+  const isDeployed = await isSmartAccountDeployed(publicClient, client.account.address);
+  if (!isDeployed) {
+    return deployAccountWithInitializer(signerClient, validatorAddress, batchCallData, totalValue);
+  }
 
   const batchTransaction = {
     to: BATCH_CALLER_ADDRESS as Hex,
@@ -364,7 +366,6 @@ export async function sendTransactionBatch<
     paymasterInput: parameters.paymasterInput,
     type: "eip712",
   } as any;
-
   return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress);
 }
 
