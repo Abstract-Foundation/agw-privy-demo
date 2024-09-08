@@ -338,8 +338,9 @@ export async function prepareTransactionRequest<
         chainId: request.chainId,
         authorizationList: []
       };
+      console.log("fee request", estimateFeeRequest)
       const { maxFeePerGas, maxPriorityFeePerGas } =
-        await estimateFee(publicClient, estimateFeeRequest)
+        await estimateFee(publicClient, estimateFeeRequest);
 
       if (
         typeof args.maxPriorityFeePerGas === 'undefined' &&

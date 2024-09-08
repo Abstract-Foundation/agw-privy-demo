@@ -30,6 +30,8 @@ export async function deployAccountWithInitializer<
   validatorAddress: Address,
   initCallData: Hex,
   initValue: bigint,
+  paymaster?: Address | undefined,
+  paymasterInput?: Hex | undefined
 ): Promise<Hex> {
   const addressBytes = toBytes(signerClient.account!.address);
   const salt = keccak256(addressBytes);
@@ -81,6 +83,8 @@ export async function deployAccountWithInitializer<
     functionName: 'deployAccount',
     args: [salt, initializerCallData],
     value: initValue,
+    paymaster: paymaster,
+    paymasterInput: paymasterInput,
   } as WriteContractParameters<typeof AccountFactoryAbi, 'deployAccount', [Hex, Hex], typeof signerClient.chain, typeof signerClient.account>;
 
   const hash = await signerClient.writeContract(writeContractParams);

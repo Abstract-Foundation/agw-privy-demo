@@ -21,6 +21,8 @@ import {
   encodeFunctionData,
   Abi,
   PublicClient,
+  toBytes,
+  keccak256
 } from "viem";
 import {
   abstractTestnet,
@@ -54,8 +56,8 @@ import {
   Eip712WalletActions
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
-import {BATCH_CALLER_ADDRESS} from "./constants";
-import { deployAccountWithInitializer } from './deployAccount';
+import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import AccountFactoryAbi from "./AccountFactory.json";
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
 
@@ -151,6 +153,7 @@ export async function signTransaction<
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
   args: SignEip712TransactionParameters<chain, account, chainOverride>,
   validatorAddress: Hex,
 ): Promise<SignEip712TransactionReturnType> {
@@ -216,6 +219,77 @@ export async function signTransaction<
   ) as SignEip712TransactionReturnType
 }
 
+export async function signTransactionAsSigner<
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+  account extends Account | undefined = Account | undefined,
+  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
+>(
+  client: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
+  args: SignEip712TransactionParameters<chain, account, chainOverride>,
+): Promise<SignEip712TransactionReturnType> {
+  const {
+    account: account_ = client.account,
+    chain = client.chain,
+    ...transaction
+  } = args
+
+  if (!account_)
+    throw new AccountNotFoundError({
+      docsPath: '/docs/actions/wallet/signTransaction',
+    })
+  const smartAccount = parseAccount(account_)
+
+  assertEip712Request({
+    account: smartAccount,
+    chain,
+    ...(args as AssertEip712RequestParameters),
+  })
+
+  if (!chain || !ALLOWED_CHAINS.includes(chain)) {
+    throw new BaseError('Invalid chain specified');
+  }
+
+  if (!chain?.custom?.getEip712Domain)
+    throw new BaseError('`getEip712Domain` not found on chain.')
+  if (!chain?.serializers?.transaction)
+    throw new BaseError('transaction serializer not found on chain.')
+
+  const chainId = await getAction(client, getChainId, 'getChainId')({})
+  if (chain !== null)
+    assertCurrentChain({
+      currentChainId: chainId,
+      chain: chain,
+    })
+
+  const signerNonce = await publicClient.getTransactionCount({address: signerClient.account?.address!});
+
+  const eip712Domain = chain?.custom.getEip712Domain({
+    ...transaction,
+    chainId,
+    from: signerClient.account?.address!,
+    type: 'eip712',
+    nonce: signerNonce,
+  });
+
+  const signature = await signTypedData(signerClient, {
+    ...eip712Domain,
+    account: signerClient.account!
+  });
+
+  return chain?.serializers?.transaction(
+    {
+      chainId,
+      ...transaction,
+      from: signerClient.account?.address!,
+      customSignature: signature,
+      type: 'eip712' as any,
+    },
+    { r: '0x0', s: '0x0', v: 0n },
+  ) as SignEip712TransactionReturnType
+}
+
 export async function sendTransaction<
   const request extends SendTransactionRequest<chain, chainOverride>,
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
@@ -233,7 +307,7 @@ export async function sendTransaction<
   >,
   validatorAddress: Hex,
 ): Promise<SendEip712TransactionReturnType> {
-  return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress);
+  return _sendTransaction(client, signerClient, publicClient, parameters, validatorAddress, false);
 }
 
 export async function _sendTransaction<
@@ -252,8 +326,11 @@ export async function _sendTransaction<
     request
   >,
   validatorAddress: Hex,
+  isInitialTransaction: boolean,
 ): Promise<SendEip712TransactionReturnType> {
   const { chain = client.chain } = parameters
+
+  console.log("CALLED")
 
   if (!signerClient.account)
     throw new AccountNotFoundError({
@@ -268,7 +345,7 @@ export async function _sendTransaction<
     const request = await prepareTransactionRequest(client, publicClient, {
       ...parameters,
       parameters: ['gas', 'nonce', 'fees'],
-    } as any)
+    } as any) as any
 
     let chainId: number | undefined
     if (chain !== null) {
@@ -279,10 +356,20 @@ export async function _sendTransaction<
       })
     }
 
-    const serializedTransaction = await signTransaction(client, signerClient, {
-      ...request,
-      chainId,
-    } as any, validatorAddress)
+    let serializedTransaction;
+    if (isInitialTransaction) {
+      serializedTransaction = await signTransactionAsSigner(client, signerClient, publicClient, {
+        ...request,
+        chainId,
+      } as any)
+    } else {
+      serializedTransaction = await signTransaction(client, signerClient, publicClient, {
+        ...request,
+        chainId,
+      } as any, validatorAddress)
+
+      console.log("serialized", serializedTransaction)
+    }
 
     return await getAction(
       client,
@@ -352,20 +439,79 @@ export async function sendTransactionBatch<
   // Get cumulative value passed in
   const totalValue = calls.reduce((sum, call) => sum + BigInt(call.value), BigInt(0));
 
+  let batchTransaction;
+
   const isDeployed = await isSmartAccountDeployed(publicClient, client.account.address);
   if (!isDeployed) {
-    return deployAccountWithInitializer(signerClient, validatorAddress, batchCallData, totalValue);
-  }
+    const initialCall = {
+      target: BATCH_CALLER_ADDRESS,
+      allowFailure: false,
+      value: totalValue,
+      callData: batchCallData,
+    } as Call;
+  
+    // Create calldata for initializing the proxy account
+    const initializerCallData = encodeFunctionData({
+      abi: [{
+        name: 'initialize',
+        type: 'function',
+        inputs: [
+          { name: 'initialK1Owner', type: 'address' },
+          { name: 'initialK1Validator', type: 'address' },
+          { name: 'modules', type: 'bytes[]' },
+          {
+            name: 'initCall',
+            type: 'tuple',
+            components: [
+              { name: 'target', type: 'address' },
+              { name: 'allowFailure', type: 'bool' },
+              { name: 'value', type: 'uint256' },
+              { name: 'callData', type: 'bytes' }
+            ]
+          }
+        ],
+        outputs: [],
+        stateMutability: 'nonpayable'
+      }],
+      functionName: 'initialize',
+      args: [
+        client.account.address,
+        validatorAddress,
+        [],
+        initialCall
+      ]
+    });
 
-  const batchTransaction = {
-    to: BATCH_CALLER_ADDRESS as Hex,
-    data: batchCallData,
-    value: totalValue,
-    paymaster: parameters.paymaster,
-    paymasterInput: parameters.paymasterInput,
-    type: "eip712",
-  } as any;
-  return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress);
+    const addressBytes = toBytes(client.account.address);
+    const salt = keccak256(addressBytes);
+    const deploymentCalldata = encodeFunctionData({
+      abi: AccountFactoryAbi,
+      functionName: 'deployAccount',
+      args: [salt, initializerCallData]
+    });
+
+    batchTransaction = {
+      to: SMART_ACCOUNT_FACTORY_ADDRESS,
+      data: deploymentCalldata,
+      value: totalValue,
+      paymaster: parameters.paymaster,
+      paymasterInput: parameters.paymasterInput,
+      type: "eip712",
+    } as any;
+
+    return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress, true);
+  } else {
+    batchTransaction = {
+      to: BATCH_CALLER_ADDRESS as Hex,
+      data: batchCallData,
+      value: totalValue,
+      paymaster: parameters.paymaster,
+      paymasterInput: parameters.paymasterInput,
+      type: "eip712",
+    } as any;
+
+    return _sendTransaction(client, signerClient, publicClient, batchTransaction, validatorAddress, false);
+  }
 }
 
 export async function writeContract<
@@ -463,7 +609,7 @@ export function globalWalletActions<
   ): AbstractWalletActions<chain, account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
     sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
-    signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
+    signTransaction: (args) => signTransaction(client, signerClient, publicClient, args, validatorAddress),
     deployContract: (args) => deployContract(client, args), // TODO: update this
     writeContract: (args) =>
       writeContract(
