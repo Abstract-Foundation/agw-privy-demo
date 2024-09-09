@@ -21,7 +21,7 @@ import {
   Abi,
   PublicClient,
   toBytes,
-  keccak256
+  keccak256,
 } from "viem";
 import {
   abstractTestnet,
@@ -106,13 +106,10 @@ export async function isSmartAccountDeployed<
 }
 
 export type SendTransactionBatchParameters<
-  chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
-  chainOverride extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-  request extends SendTransactionRequest<chain, chainOverride> = SendTransactionRequest<chain, chainOverride>
+  request extends SendTransactionRequest<Chain> = SendTransactionRequest<Chain>
 > = {
   // TODO: figure out if more fields need to be lifted up
-  calls: SendEip712TransactionParameters<chain, account, chainOverride, request>[];
+  calls: SendEip712TransactionParameters<Chain, Account, Chain, request>[];
   paymaster?: Address | undefined
   paymasterInput?: Hex | undefined
 };
@@ -389,7 +386,7 @@ export async function sendTransactionBatch<
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
   publicClient: PublicClient<Transport, chain>,
-  parameters: SendTransactionBatchParameters<chain, account, chainOverride, request>,
+  parameters: SendTransactionBatchParameters<request>,
   validatorAddress: Hex,
 ): Promise<SendTransactionReturnType> {
   if (parameters.calls.length === 0) {
@@ -547,22 +544,18 @@ export type AbstractWalletActions<
   account extends Account | undefined = Account | undefined,
 > = Eip712WalletActions<chain, account> & {
   sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(
-    args: SendTransactionBatchParameters<chain, account, chainOverride, request>
+    args: SendTransactionBatchParameters<request>
   ) => Promise<SendTransactionReturnType>;
 };
 
-export function globalWalletActions<
-  transport extends Transport,
-  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
-  account extends Account | undefined = Account | undefined,
->(
+export function globalWalletActions(
   validatorAddress: Hex,
-  signerClient: WalletClient<transport, chain, account>,
-  publicClient: PublicClient<Transport, chain>,
+  signerClient: WalletClient<Transport, Chain, Account>,
+  publicClient: PublicClient<Transport, Chain>,
 ) {
   return (
-    client: Client<transport, ChainEIP712, Account>,
-  ): AbstractWalletActions<chain, account> => ({
+    client: Client<Transport, ChainEIP712, Account>,
+  ): AbstractWalletActions<Chain, Account> => ({
     sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
     sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
@@ -574,7 +567,7 @@ export function globalWalletActions<
         }),
         signerClient,
         publicClient,
-        args,
+        args as WriteContractParameters<Abi, string, readonly unknown[], Chain, Account, Chain>,
         validatorAddress,
       ),
   })
