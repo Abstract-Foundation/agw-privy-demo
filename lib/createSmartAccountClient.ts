@@ -23,16 +23,9 @@ type CreateAbstractClientParameters = {
 
 type AbstractClientActions = AbstractWalletActions<ChainEIP712, Account>;
 
-export type AbstractClient<
-  TTransport extends Transport = Transport,
-  TAccount extends Account = Account
-> = Client<TTransport, ChainEIP712, TAccount> & AbstractClientActions;
+export type AbstractClient = Client<Transport, ChainEIP712, Account> & AbstractClientActions;
 
-export function createAbstractClient<
-  TTransport extends Transport,
->(
-  parameters: CreateAbstractClientParameters
-): AbstractClient<TTransport> {
+export function createAbstractClient(parameters: CreateAbstractClientParameters): AbstractClient {
   const { smartAccountAddress, validatorAddress, signerAddress, eip1193Provider, chain } = parameters;
   const transport = custom(eip1193Provider);
 
@@ -56,5 +49,5 @@ export function createAbstractClient<
   })
 
   const abstractClient = baseClient.extend(globalWalletActions(validatorAddress, signerWalletClient, publicClient));
-  return abstractClient as AbstractClient<TTransport>;
+  return abstractClient as AbstractClient;
 }
