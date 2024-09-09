@@ -468,7 +468,7 @@ export async function sendTransactionBatch<
 }
 
 export async function writeContract<
-  chain extends Chain | undefined,
+  chain extends ChainEIP712 | undefined,
   account extends Account | undefined,
   const abi extends Abi | readonly unknown[],
   functionName extends ContractFunctionName<abi, 'nonpayable' | 'payable'>,
@@ -477,7 +477,7 @@ export async function writeContract<
     'nonpayable' | 'payable',
     functionName
   >,
-  chainOverride extends Chain | undefined,
+  chainOverride extends ChainEIP712 | undefined,
 >(
   client: Client<Transport, ChainEIP712, Account>,
   signerClient: WalletClient<Transport, chain, account>,
@@ -540,18 +540,18 @@ export async function writeContract<
 }
 
 export type AbstractWalletActions<
-  chain extends Chain | undefined = Chain | undefined,
+  chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
 > = Eip712WalletActions<chain, account> & {
-  sendTransactionBatch: <const request extends SendTransactionRequest<chain, chainOverride>, chainOverride extends ChainEIP712 | undefined = undefined>(
+  sendTransactionBatch: <const request extends SendTransactionRequest<ChainEIP712>>(
     args: SendTransactionBatchParameters<request>
   ) => Promise<SendTransactionReturnType>;
 };
 
 export function globalWalletActions(
   validatorAddress: Hex,
-  signerClient: WalletClient<Transport, Chain, Account>,
-  publicClient: PublicClient<Transport, Chain>,
+  signerClient: WalletClient<Transport, ChainEIP712, Account>,
+  publicClient: PublicClient<Transport, ChainEIP712>,
 ) {
   return (
     client: Client<Transport, ChainEIP712, Account>,
@@ -567,7 +567,7 @@ export function globalWalletActions(
         }),
         signerClient,
         publicClient,
-        args as WriteContractParameters<Abi, string, readonly unknown[], Chain, Account, Chain>,
+        args as WriteContractParameters<Abi, string, readonly unknown[], ChainEIP712, Account>,
         validatorAddress,
       ),
   })
