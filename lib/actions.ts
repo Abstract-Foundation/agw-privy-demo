@@ -57,7 +57,7 @@ import {
   encodeDeployData,
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
-import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, CONTRACT_DEPLOYER_ADDRESS} from "./constants";
 import AccountFactoryAbi from "./AccountFactory.json";
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
@@ -541,9 +541,6 @@ export async function writeContract<
   }
 }
 
-export const contractDeployerAddress =
-  '0x0000000000000000000000000000000000008006' as const
-
 export function deployContract<
   const abi extends Abi | readonly unknown[],
   chain extends ChainEIP712 | undefined,
@@ -572,12 +569,10 @@ export function deployContract<
   if (!request.factoryDeps.includes(bytecode))
     request.factoryDeps.push(bytecode)
 
-  console.log("factoryDeps", request.factoryDeps)
-
   return sendTransaction(walletClient, signerClient, publicClient, {
     ...request,
     data,
-    to: contractDeployerAddress,
+    to: CONTRACT_DEPLOYER_ADDRESS,
   } as unknown as SendEip712TransactionParameters<
     chain,
     account,
