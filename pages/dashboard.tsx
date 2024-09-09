@@ -57,21 +57,73 @@ export default function DashboardPage() {
         paymasterInput: paymasterInput,
       });
 
-      // const transactionHash = await smartAccountClient.sendTransactionBatch({
-      //   calls: [
-      //     {
-      //       to: NFT_ADDRESS,
-      //       data: mintData,
-      //       value: 0n
-      //     },
-      //     {
-      //       to: NFT_ADDRESS,
-      //       data: mintData,
-      //     }
-      //   ],
-      //   paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
-      //   paymasterInput: paymasterInput,
-      // })
+      toast.update(toastId, {
+        render: "Waiting for your transaction to be confirmed...",
+        type: "info",
+        isLoading: true,
+      });
+
+      toast.update(toastId, {
+        render: (
+          <Alert href={`${ABS_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
+            Successfully minted! Click here to see your transaction.
+          </Alert>
+        ),
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } catch (error) {
+      console.error("Mint failed with error: ", error);
+      toast.update(toastId, {
+        render: (
+          <Alert>
+            There was an error sending your transaction. See the developer
+            console for more info.
+          </Alert>
+        ),
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+
+    setIsMinting(false);
+  };
+
+  const onBatchMint = async () => {
+    // The mint button is disabled if either of these are undefined
+    if (!smartAccountClient || !smartAccountAddress) return;
+
+    // Store a state to disable the mint button while mint is in progress
+    setIsMinting(true);
+    const toastId = toast.loading("Minting...");
+
+    try {
+      const mintData = encodeFunctionData({
+        abi: ABI,
+        functionName: "mint",
+        args: [smartAccountAddress, 1],
+      });
+      const paymasterInput = getGeneralPaymasterInput({
+        innerInput: "0x",
+      });
+
+      const transactionHash = await smartAccountClient.sendTransactionBatch({
+        calls: [
+          {
+            to: NFT_ADDRESS,
+            data: mintData,
+            value: 0n
+          },
+          {
+            to: NFT_ADDRESS,
+            data: mintData,
+          }
+        ],
+        paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+        paymasterInput: paymasterInput,
+      })
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -146,6 +198,10 @@ export default function DashboardPage() {
                   <CellTitle title="Actions" />
                   <Button onClick={onMint} disabled={isLoading || isMinting}>
                     Mint NFT
+                    <ArrowSVG />
+                  </Button>
+                  <Button onClick={onBatchMint} disabled={isLoading || isMinting}>
+                    Batch Mint NFT
                     <ArrowSVG />
                   </Button>
 
