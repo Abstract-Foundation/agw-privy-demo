@@ -40,9 +40,15 @@ export const SmartAccountProvider = ({
   const { wallets } = useWallets();
   const { ready } = usePrivy();
   // Find the embedded wallet by finding the entry in the list with a `walletClientType` of 'privy'
-  const embeddedWallet = wallets.find(
-    (wallet) => wallet.walletClientType === "privy"
+  let embeddedWallet = wallets.find(
+    (wallet) => {
+      return wallet.walletClientType === "privy";
+    }
   );
+  
+  if (!embeddedWallet) {
+    embeddedWallet = wallets[0];
+  }
 
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<ConnectedWallet | undefined>();
@@ -63,6 +69,8 @@ export const SmartAccountProvider = ({
     // Creates a smart account given a Privy `ConnectedWallet` object representing
     // the user's EOA.
     const createSmartWallet = async (eoa: ConnectedWallet) => {
+      console.log("Creating smart wallet");
+      console.log("eoa", eoa);
       setEoa(eoa);
 
       const eip1193provider = await eoa.getEthereumProvider();

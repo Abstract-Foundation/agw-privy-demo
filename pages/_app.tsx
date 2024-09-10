@@ -48,7 +48,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
         clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
         config={{
-          loginMethods: ["email", "google"],
+          loginMethods: ["email", "google", "wallet"],
           appearance: {
             theme: "light",
             accentColor: "#676FFF",
