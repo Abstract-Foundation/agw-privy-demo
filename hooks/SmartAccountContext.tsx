@@ -3,9 +3,8 @@ import { ConnectedWallet, usePrivy, useWallets } from "@privy-io/react-auth";
 import { createWalletClient, custom, EIP1193Provider, Hex, createPublicClient, http } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { VALIDATOR_ADDRESS } from '../lib/constants';
-import { createAbstractClient, AbstractClient} from "../lib/createSmartAccountClient";
+import { createAbstractClient, AbstractClient, getSmartAccountAddressFromInitialSigner } from "@abstract-foundation/agw-sdk";
 import { eip712WalletActions } from "viem/zksync";
-import { getSmartAccountAddressFromInitialSigner } from "../lib/utils";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
