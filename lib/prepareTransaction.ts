@@ -60,6 +60,7 @@ import {
   EstimateFeeParameters,
   ChainEIP712
 } from "viem/zksync"
+import {CONTRACT_DEPLOYER_ADDRESS} from "./constants"
 
 export type IsUndefined<T> = [undefined] extends [T] ? true : false
 
@@ -331,19 +332,28 @@ export async function prepareTransactionRequest<
       typeof request.maxFeePerGas === 'undefined' ||
       typeof request.maxPriorityFeePerGas === 'undefined'
     ) {
-      const estimateFeeRequest: EstimateFeeParameters<chain, account | undefined, ChainEIP712> = {
-        account: initiatorAccount,
-        to: request.to,
-        value: request.value,
-        data: request.data,
-        gas: request.gas,
-        nonce: request.nonce,
-        chainId: request.chainId,
-        authorizationList: []
-      };
-      const { maxFeePerGas, maxPriorityFeePerGas } =
-        await estimateFee(publicClient, estimateFeeRequest);
-
+      let maxFeePerGas: bigint | undefined;
+      let maxPriorityFeePerGas: bigint | undefined;
+      // Skip fee estimation for contract deployments
+      if (request.to === CONTRACT_DEPLOYER_ADDRESS) {
+        maxFeePerGas = 25000000n;
+        maxPriorityFeePerGas = 0n;
+      } else {
+        const estimateFeeRequest: EstimateFeeParameters<chain, account | undefined, ChainEIP712> = {
+          account: initiatorAccount,
+          to: request.to,
+          value: request.value,
+          data: request.data,
+          gas: request.gas,
+          nonce: request.nonce,
+          chainId: request.chainId,
+          authorizationList: []
+        };
+        const feeEstimation = await estimateFee(publicClient, estimateFeeRequest);
+        maxFeePerGas = feeEstimation.maxFeePerGas;
+        maxPriorityFeePerGas = feeEstimation.maxPriorityFeePerGas;
+      }
+      
       if (
         typeof args.maxPriorityFeePerGas === 'undefined' &&
         args.maxFeePerGas &&

@@ -8,11 +8,13 @@ import {
   NFT_ADDRESS,
   AA_FACTORY_PAYMASTER_ADDRESS
 } from "../lib/constants";
-import { encodeFunctionData } from "viem";
+import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
+import TestTokenABI from "../lib/TestTokenABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
+import { randomBytes } from 'crypto';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -159,6 +161,67 @@ export default function DashboardPage() {
     setIsMinting(false);
   };
 
+  const onDeployContract = async () => {
+    // The button is disabled if either of these are undefined
+    if (!smartAccountClient || !smartAccountAddress) return;
+
+    // Store a state to disable the mint button while mint is in progress
+    setIsMinting(true);
+    const toastId = toast.loading("Minting...");
+
+    function generateRandomBytes32(): Hex {
+      // Generate 32 random bytes
+      const randomBuffer = randomBytes(32);
+      
+      // Convert the buffer to a hexadecimal string and add the '0x' prefix
+      return ('0x' + randomBuffer.toString('hex')) as Hex;
+    }
+
+    try {
+      const transactionHash = await smartAccountClient.deployContract({
+        abi: TestTokenABI,
+        chain: smartAccountClient.chain,
+        account: smartAccountClient.account,
+        bytecode: "0x0000000100200190000000150000c13d000000000201001900000060022002700000000902200197000000040020008c0000001f0000413d000000000301043b0000000b033001970000000c0030009c0000001f0000c13d000000240020008c0000001f0000413d0000000002000416000000000002004b0000001f0000c13d0000000401100370000000000101043b000000000010041b0000000001000019000000220001042e0000008001000039000000400010043f0000000001000416000000000001004b0000001f0000c13d0000002001000039000001000010044300000120000004430000000a01000041000000220001042e000000000100001900000023000104300000002100000432000000220001042e000000230001043000000000000000000000000000000000000000000000000000000000ffffffff0000000200000000000000000000000000000040000001000000000000000000ffffffff0000000000000000000000000000000000000000000000000000000055241077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bb15b285040315edf518d7c864e5d2c87378a8f1c65f45218de9cd10f3f559ed",
+        args: [],
+        deploymentType: "create2",
+        salt: generateRandomBytes32(),
+      })
+
+      toast.update(toastId, {
+        render: "Waiting for your transaction to be confirmed...",
+        type: "info",
+        isLoading: true,
+      });
+
+      toast.update(toastId, {
+        render: (
+          <Alert href={`${ABS_SEPOLIA_SCAN_URL}/tx/${transactionHash}`}>
+            Successfully minted! Click here to see your transaction.
+          </Alert>
+        ),
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } catch (error) {
+      console.error("Mint failed with error: ", error);
+      toast.update(toastId, {
+        render: (
+          <Alert>
+            There was an error sending your transaction. See the developer
+            console for more info.
+          </Alert>
+        ),
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+
+    setIsMinting(false);
+  };
+
   const onLink = async () => {
     return;
     // // The link button is disabled if either of these are undefined
@@ -204,7 +267,10 @@ export default function DashboardPage() {
                     Batch Mint NFT
                     <ArrowSVG />
                   </Button>
-
+                  <Button onClick={onDeployContract} disabled={isLoading || isMinting}>
+                    Deploy Contract
+                    <ArrowSVG />
+                  </Button>
                   <Button onClick={onLink} disabled>
                     Link Smart Account
                   </Button>

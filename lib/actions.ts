@@ -45,17 +45,19 @@ import {
 } from "viem"
 import {
   ChainEIP712,
-  deployContract,
   SignEip712TransactionReturnType,
   ZksyncTransactionRequest,
   ZksyncTransactionSerializable,
   SignEip712TransactionParameters,
   SendEip712TransactionParameters,
   SendEip712TransactionReturnType,
-  Eip712WalletActions
+  Eip712WalletActions,
+  DeployContractParameters,
+  DeployContractReturnType,
+  encodeDeployData,
 } from "viem/zksync";
 import {prepareTransactionRequest} from "./prepareTransaction";
-import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS} from "./constants";
+import {BATCH_CALLER_ADDRESS, SMART_ACCOUNT_FACTORY_ADDRESS, CONTRACT_DEPLOYER_ADDRESS} from "./constants";
 import AccountFactoryAbi from "./AccountFactory.json";
 
 const ALLOWED_CHAINS: ChainEIP712[] = [abstractTestnet];
@@ -539,6 +541,45 @@ export async function writeContract<
   }
 }
 
+export function deployContract<
+  const abi extends Abi | readonly unknown[],
+  chain extends ChainEIP712 | undefined,
+  account extends Account | undefined,
+  chainOverride extends ChainEIP712 | undefined,
+>(
+  walletClient: Client<Transport, ChainEIP712, Account>,
+  signerClient: WalletClient<Transport, chain, account>,
+  publicClient: PublicClient<Transport, chain>,
+  parameters: DeployContractParameters<abi, chain, account, chainOverride>,
+  validatorAddress: Hex,
+): Promise<DeployContractReturnType> {
+  const { abi, args, bytecode, deploymentType, salt, ...request } =
+    parameters as DeployContractParameters
+
+  const data = encodeDeployData({
+    abi,
+    args,
+    bytecode,
+    deploymentType,
+    salt,
+  })
+
+  // Add the bytecode to the factoryDeps if it's not already there
+  request.factoryDeps = request.factoryDeps || []
+  if (!request.factoryDeps.includes(bytecode))
+    request.factoryDeps.push(bytecode)
+
+  return sendTransaction(walletClient, signerClient, publicClient, {
+    ...request,
+    data,
+    to: CONTRACT_DEPLOYER_ADDRESS,
+  } as unknown as SendEip712TransactionParameters<
+    chain,
+    account,
+    chainOverride
+  >, validatorAddress)
+}
+
 export type AbstractWalletActions<
   chain extends ChainEIP712 | undefined = ChainEIP712 | undefined,
   account extends Account | undefined = Account | undefined,
@@ -559,7 +600,7 @@ export function globalWalletActions(
     sendTransaction: (args) => sendTransaction(client, signerClient, publicClient, args, validatorAddress),
     sendTransactionBatch: (args) => sendTransactionBatch(client, signerClient, publicClient, args, validatorAddress),
     signTransaction: (args) => signTransaction(client, signerClient, args, validatorAddress),
-    deployContract: (args) => deployContract(client, args), // TODO: update this
+    deployContract: (args) => deployContract(client, signerClient, publicClient, args, validatorAddress),
     writeContract: (args) =>
       writeContract(
         Object.assign(client, {
