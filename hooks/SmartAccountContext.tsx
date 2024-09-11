@@ -53,22 +53,10 @@ export const SmartAccountProvider = ({
     const createSmartWallet = async (eoa: Account) => {
       setEoa(eoa);
 
-      //const eip1193provider = await eoa.getEthereumProvider();
-      console.log(eoa)
-
-      // const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
-      // const address = getAddress(accounts[0]!);
-      // const browserWalletClient = createWalletClient({
-      //   account: address,
-      //   chain: abstractTestnet,
-      //   transport: custom(window.ethereum),
-      // }).extend(eip712WalletActions());
       const smartAccountClient = await createAbstractClient({
         signer: eoa,
         chain: abstractTestnet
       })
-
-      console.log(smartAccountClient)
 
       setSmartAccountClient(smartAccountClient);
       setSmartAccountAddress(smartAccountClient.account.address);

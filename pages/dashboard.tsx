@@ -15,6 +15,7 @@ import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
 import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
+import { useCrossAppAccounts } from "@privy-io/react-auth";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,6 +23,8 @@ export default function DashboardPage() {
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
   const { ready, authenticated, logout, user } = useLoginWithAbstract();
+
+  const { signMessage } = useCrossAppAccounts();
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
     if (ready && !authenticated) {
