@@ -1,33 +1,18 @@
-import { useCrossAppAccounts, usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
+import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
 
 export default function LoginPage() {
   const router = useRouter();
-  const {loginWithCrossAppAccount} = useCrossAppAccounts();
 
-  const { ready, authenticated } = usePrivy();
+  const {ready, authenticated, loginWithAbstract} = useLoginWithAbstract();
 
   useEffect(() => {
-    if (!ready) return;
     if (ready && authenticated) {
       router.push("/dashboard");
     }
   }, [ready, authenticated, router]);
-
-  const loginWithAbstract = async () => {
-    if (!ready) return;
-    if (!authenticated) {
-      try {
-        await loginWithCrossAppAccount({ appId: "cm04asygd041fmry9zmcyn5o5" });
-      } catch (error) {
-        console.error(error);
-        return;
-      }
-    }
-  }
-
   return (
     <>
       <Head>

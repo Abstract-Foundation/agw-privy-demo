@@ -15,13 +15,15 @@ import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
+import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
+import { abstractTestnet } from "viem/chains";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { ready, authenticated, user, logout } = usePrivy();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
+  const { ready, authenticated, logout, user } = useLoginWithAbstract();
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
     if (ready && !authenticated) {
@@ -243,6 +245,12 @@ export default function DashboardPage() {
     //   connectorType: 'safe'
     // });
   };
+
+  useEffect(() => {
+    console.log(smartAccountClient)
+    console.log(eoa)
+    console.log(smartAccountAddress)
+  }, [smartAccountClient])
 
   return (
     <>
