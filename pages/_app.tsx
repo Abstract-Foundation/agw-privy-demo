@@ -45,8 +45,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta name="description" content="Privy x Permissionless" />
       </Head>
       <PrivyProvider
-        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
+        appId={"cm0wxwkt300ujp9fcbp6t8jf7"}
         config={{
           loginMethods: ["email", "google"],
           appearance: {
@@ -54,7 +53,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             accentColor: "#676FFF",
           },
           embeddedWallets: {
-            createOnLogin: "users-without-wallets",
+            createOnLogin: "users-without-wallets", // TODO: change this to "off"
             noPromptOnSignature: true,
           },
           // @ts-ignore
