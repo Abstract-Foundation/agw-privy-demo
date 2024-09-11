@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
-import { /*useLinkWithSiwe,*/ usePrivy } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
@@ -16,7 +15,6 @@ import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
 import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
-import { abstractTestnet } from "viem/chains";
 
 export default function DashboardPage() {
   const router = useRouter();

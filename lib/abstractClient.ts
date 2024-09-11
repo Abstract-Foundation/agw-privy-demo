@@ -11,6 +11,7 @@ import {
   
   import { type AbstractWalletActions, globalWalletActions } from './actions';
   import { getSmartAccountAddressFromInitialSigner } from './utils';
+import { VALIDATOR_ADDRESS } from './constants';
   
   interface CreateAbstractClientParameters {
     signer: Account;
@@ -54,7 +55,7 @@ import {
     });
   
     const abstractClient = baseClient.extend(
-      globalWalletActions(signerWalletClient, publicClient),
+      globalWalletActions(VALIDATOR_ADDRESS, signerWalletClient, publicClient),
     );
     return abstractClient as AbstractClient;
   }

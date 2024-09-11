@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import { ConnectedWallet, useWallets } from "@privy-io/react-auth";
 import { Hex, Account } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { createAbstractClient, AbstractClient} from "../lib/abstractClient";
@@ -8,7 +7,7 @@ import { useLoginWithAbstract } from "./usePrivyCrossAppAccount";
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
   /** Privy embedded wallet, used as a signer for the smart account */
-  eoa: ConnectedWallet | undefined;
+  eoa: Account | undefined;
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient:
     | AbstractClient
@@ -35,10 +34,7 @@ export const SmartAccountProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  // Get a list of all of the wallets (EOAs) the user has connected to your site
-  const { wallets } = useWallets();
-
-  const { account, ready } = useLoginWithAbstract();
+  const { account } = useLoginWithAbstract();
   
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<Account | undefined>();

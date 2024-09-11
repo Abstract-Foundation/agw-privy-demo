@@ -12,7 +12,7 @@ export const useLoginWithAbstract = () => {
         if (!ready) return;
         if (!authenticated) {
             try {
-                const user = await loginWithCrossAppAccount({ appId: "cm04asygd041fmry9zmcyn5o5" });
+                await loginWithCrossAppAccount({ appId: "cm04asygd041fmry9zmcyn5o5" });
             } catch (error) {
                 console.error(error);
                 return;
