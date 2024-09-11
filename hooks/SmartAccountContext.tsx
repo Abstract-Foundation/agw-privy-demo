@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { ConnectedWallet, useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom, EIP1193Provider, Hex, createPublicClient, http, Account } from "viem";
+import { Hex, Account } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { createAbstractClient, AbstractClient} from "@abstract-foundation/agw-sdk";
-import { eip712WalletActions } from "viem/zksync";
+import { createAbstractClient, AbstractClient} from "../lib/abstractClient";
 import { useLoginWithAbstract } from "./usePrivyCrossAppAccount";
 
 /** Interface returned by custom `useSmartAccount` hook */
