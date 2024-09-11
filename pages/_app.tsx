@@ -53,7 +53,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             accentColor: "#676FFF",
           },
           embeddedWallets: {
-            createOnLogin: "users-without-wallets", // TODO: change this to "off"
+            createOnLogin: "off",
             noPromptOnSignature: true,
           },
           // @ts-ignore
