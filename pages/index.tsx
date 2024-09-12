@@ -1,15 +1,18 @@
-import { useLogin } from "@privy-io/react-auth";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import React, { useEffect } from "react";
+import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const { login } = useLogin({
-    // Navigate the user to the dashboard after logging in
-    onComplete: () => router.push("/dashboard"),
-  });
+  const {ready, authenticated, loginWithAbstract} = useAbstractGlobalWallet();
 
+  useEffect(() => {
+    if (ready && authenticated) {
+      router.push("/dashboard");
+    }
+  }, [ready, authenticated, router]);
   return (
     <>
       <Head>
@@ -30,7 +33,7 @@ export default function LoginPage() {
                 src="/images/circle.svg"
               />
             </div>
-            <Button onClick={() => login()}>
+            <Button onClick={() => loginWithAbstract()} disabled={!ready || authenticated}>
               Login with Abstract
               <svg fill="none" viewBox="0 0 14 13" height="15">
                 <path
@@ -67,12 +70,15 @@ const DotsBG = () => (
 const Button = ({
   children,
   onClick,
+  disabled,
 }: {
   children: React.ReactNode;
   onClick: () => void;
+  disabled?: boolean;
 }) => (
   <button
     onClick={onClick}
+    disabled={disabled}
     style={{
       boxShadow:
         "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 6px 10px -4px rgba(0, 0, 0, 0.12)",

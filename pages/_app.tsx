@@ -46,7 +46,6 @@ function MyApp({ Component, pageProps }: AppProps) {
       </Head>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
         config={{
           loginMethods: ["email", "google"],
           appearance: {
@@ -54,7 +53,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             accentColor: "#676FFF",
           },
           embeddedWallets: {
-            createOnLogin: "users-without-wallets",
+            createOnLogin: "off",
             noPromptOnSignature: true,
           },
           // @ts-ignore
