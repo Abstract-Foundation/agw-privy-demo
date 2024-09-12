@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Hex, Account } from "viem";
 import { abstractTestnet } from "viem/chains";
-import { createAbstractClient, AbstractClient} from "../lib/abstractClient";
+import { createAbstractClient, AbstractClient} from "@abstract-foundation/agw-sdk";
 import { useAbstractGlobalWallet } from "./useAbstractGlobalWallet";
 
 /** Interface returned by custom `useSmartAccount` hook */
