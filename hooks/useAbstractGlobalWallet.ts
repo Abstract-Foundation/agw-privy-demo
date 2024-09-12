@@ -79,8 +79,7 @@ export const useAbstractGlobalWallet = (): AbstractGlobalWalletInterface => {
 
             const signTypedDataWithPrivy: CustomSource['signTypedData'] = async (data) => {
                 sanitizeMessage(data.message);
-                return signTypedData(data.message as SignTypedDataParams, { address }) as Promise<`0x${string}`>;
-                
+                return signTypedData(data as SignTypedDataParams, { address }) as Promise<`0x${string}`>;
             }
 
             return toAccount({
