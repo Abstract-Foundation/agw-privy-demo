@@ -1,12 +1,12 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
-import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
+import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const {ready, authenticated, loginWithAbstract} = useLoginWithAbstract();
+  const {ready, authenticated, loginWithAbstract} = useAbstractGlobalWallet();
 
   useEffect(() => {
     if (ready && authenticated) {
