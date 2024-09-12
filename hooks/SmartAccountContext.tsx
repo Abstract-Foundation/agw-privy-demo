@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { Hex, Account } from "viem";
 import { abstractTestnet } from "viem/chains";
 import { createAbstractClient, AbstractClient} from "../lib/abstractClient";
-import { useLoginWithAbstract } from "./usePrivyCrossAppAccount";
+import { useAbstractGlobalWallet } from "./useAbstractGlobalWallet";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -34,7 +34,7 @@ export const SmartAccountProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const { account } = useLoginWithAbstract();
+  const { account } = useAbstractGlobalWallet();
   
   // States to store the smart account and its status
   const [eoa, setEoa] = useState<Account | undefined>();

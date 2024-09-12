@@ -14,14 +14,16 @@ import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
-import { useLoginWithAbstract } from "../hooks/usePrivyCrossAppAccount";
+import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
+import { usePrivy } from "@privy-io/react-auth";
 
 export default function DashboardPage() {
   const router = useRouter();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
   const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
 
-  const { ready, authenticated, logout, user } = useLoginWithAbstract();
+  const { ready, authenticated, logout} = useAbstractGlobalWallet();
+  const { user } = usePrivy();
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
     if (ready && !authenticated) {
