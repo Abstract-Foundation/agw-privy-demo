@@ -246,12 +246,6 @@ export default function DashboardPage() {
     // });
   };
 
-  useEffect(() => {
-    console.log(smartAccountClient)
-    console.log(eoa)
-    console.log(smartAccountAddress)
-  }, [smartAccountClient])
-
   return (
     <>
       <Head>
