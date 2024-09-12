@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
-import { useSmartAccount } from "../hooks/SmartAccountContext";
+import { useSmartAccount } from "../hooks/AbstractWalletProvider";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
@@ -20,7 +20,7 @@ import { usePrivy } from "@privy-io/react-auth";
 export default function DashboardPage() {
   const router = useRouter();
   // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
-  const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
+  const { smartAccountAddress, smartAccountClient, signer: eoa } = useSmartAccount();
 
   const { ready, authenticated, logout} = useAbstractGlobalWallet();
   const { user } = usePrivy();

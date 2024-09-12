@@ -1,9 +1,8 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
-import { PrivyProvider } from "@privy-io/react-auth";
 import { abstractTestnet } from "viem/chains";
-import { SmartAccountProvider } from "../hooks/SmartAccountContext";
+import { AbstractWalletProvider } from "../hooks/AbstractWalletProvider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -44,28 +43,14 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Privy x Permissionless</title>
         <meta name="description" content="Privy x Permissionless" />
       </Head>
-      <PrivyProvider
+      <AbstractWalletProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        config={{
-          loginMethods: ["email", "google"],
-          appearance: {
-            theme: "light",
-            accentColor: "#676FFF",
-          },
-          embeddedWallets: {
-            createOnLogin: "off",
-            noPromptOnSignature: true,
-          },
-          // @ts-ignore
-          defaultChain: abstractTestnet,
-          supportedChains: [abstractTestnet]
-        }}
+        defaultChain={abstractTestnet}
+        supportedChains={[abstractTestnet]}
       >
-        <SmartAccountProvider>
-          <ToastContainer position="top-right" />
-          <Component {...pageProps} />
-        </SmartAccountProvider>
-      </PrivyProvider>
+        <ToastContainer position="top-right" />
+        <Component {...pageProps} />
+      </AbstractWalletProvider>
     </>
   );
 }
