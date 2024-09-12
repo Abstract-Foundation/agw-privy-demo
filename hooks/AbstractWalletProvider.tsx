@@ -7,9 +7,10 @@ import {
   hexToString,
   toHex,
   type Address,
+  custom,
 } from "viem";
 import { toAccount } from "viem/accounts";
-import { abstractTestnet } from "viem/chains";
+import { abstractTestnet, ChainEIP712 } from "viem/chains";
 import {
   createAbstractClient,
   type AbstractClient,
@@ -21,6 +22,7 @@ import {
   usePrivy,
   type User,
 } from "@privy-io/react-auth";
+import { toPrivyWalletProvider } from "@privy-io/cross-app-connect";
 
 /** Interface returned by custom `useSmartAccount` hook */
 interface SmartAccountInterface {
@@ -52,7 +54,7 @@ interface AbstractWalletProviderProps {
   children: React.ReactNode;
 }
 
-const SmartAccountProvider = ({ children }: { children: React.ReactNode }) => {
+const SmartAccountProvider = ({ appId, children }: { appId: string, children: React.ReactNode }) => {
   const { signMessage, signTypedData } = useCrossAppAccounts();
   const { user, ready, authenticated } = usePrivy();
 
@@ -148,9 +150,15 @@ const SmartAccountProvider = ({ children }: { children: React.ReactNode }) => {
     const createSmartWallet = async (eoa: Account) => {
       setEoa(eoa);
 
+      const privyWalletProvider = toPrivyWalletProvider({
+        providerAppId: appId,
+        chains: [abstractTestnet],
+      });
+
       const smartAccountClient = await createAbstractClient({
         signer: eoa,
-        chain: abstractTestnet,
+        chain: abstractTestnet as ChainEIP712,
+        transport: custom(privyWalletProvider)
       });
 
       setSmartAccountClient(smartAccountClient);
@@ -194,7 +202,7 @@ export const AbstractWalletProvider = ({
         supportedChains: supportedChains,
       }}
     >
-      <SmartAccountProvider>{children}</SmartAccountProvider>
+      <SmartAccountProvider appId={appId}>{children}</SmartAccountProvider>
     </PrivyProvider>
   );
 };
