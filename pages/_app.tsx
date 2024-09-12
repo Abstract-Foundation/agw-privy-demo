@@ -45,7 +45,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta name="description" content="Privy x Permissionless" />
       </Head>
       <PrivyProvider
-        appId={"cm0wxwkt300ujp9fcbp6t8jf7"}
+        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
         config={{
           loginMethods: ["email", "google"],
           appearance: {
