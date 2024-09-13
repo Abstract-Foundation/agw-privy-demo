@@ -6,6 +6,7 @@ import {
   type CustomSource,
   hexToString,
   toHex,
+  type Address,
 } from "viem";
 import { toAccount } from "viem/accounts";
 import { abstractTestnet } from "viem/chains";
@@ -28,7 +29,7 @@ interface SmartAccountInterface {
   /** Smart account client to send signature/transaction requests to the smart account */
   smartAccountClient: AbstractClient | undefined;
   /** Smart account address */
-  smartAccountAddress: `0x${string}` | undefined;
+  smartAccountAddress: Address | undefined;
   /** Boolean to indicate whether the smart account state has initialized */
   ready: boolean;
 }
