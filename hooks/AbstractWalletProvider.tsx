@@ -95,6 +95,9 @@ const SmartAccountProvider = ({ children }: { children: React.ReactNode }) => {
       // Sanitize the message to ensure it's a valid JSON object
       // This is necessary because the message object can contain BigInt values, which
       // can't be serialized by JSON.stringify
+      // TODO: Update this to not modify the underlying message but return a new copy
+      // with the proper type for the privy side. They are technically the same data but
+      // the viem typing doesn't play nice with the privy definition. 
       function sanitizeMessage(message: any) {
         for (const key in message) {
           if (typeof message[key] === "object" && message[key] !== null) {
