@@ -11,7 +11,7 @@ interface AbstractGlobalWalletInterface {
     /** Privy user object */
     user: User | undefined;
     /** Function to login with the Abstract global wallet */
-    loginWithAbstract: () => Promise<void>;
+    login: () => Promise<void>;
     /** Function to logout of the abstract global wallet */
     logout: () => Promise<void>;
 }
@@ -21,7 +21,7 @@ export const useLoginWithAbstract = (): AbstractGlobalWalletInterface => {
     const { loginWithCrossAppAccount } = useCrossAppAccounts();
     const { user, ready, authenticated, logout } = usePrivy();
 
-    const loginWithAbstract = useCallback(async () => {
+    const login = useCallback(async () => {
         if (!ready) return;
         if (!authenticated) {
             try {
@@ -37,7 +37,7 @@ export const useLoginWithAbstract = (): AbstractGlobalWalletInterface => {
         ready,
         authenticated,
         user: user ?? undefined,
-        loginWithAbstract,
+        login,
         logout,
     }
 }

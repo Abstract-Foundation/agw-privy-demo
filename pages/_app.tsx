@@ -48,6 +48,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         defaultChain={abstractTestnet}
         supportedChains={[abstractTestnet]}
       >
+        { /* your app content here */}
         <ToastContainer position="top-right" />
         <Component {...pageProps} />
       </AbstractWalletProvider>
