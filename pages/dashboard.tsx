@@ -1,7 +1,6 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
-import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
@@ -14,16 +13,13 @@ import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
-import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAbstractGlobalWallet } from "../hooks/AbstractWalletProvider";
+import { useLoginWithAbstract } from "../hooks/useLoginWithAbstract";
 
 export default function DashboardPage() {
   const router = useRouter();
-  // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
-  const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
-
-  const { ready, authenticated, logout} = useAbstractGlobalWallet();
-  const { user } = usePrivy();
+  const { ready, smartAccountAddress, smartAccountClient, signer: eoa } = useAbstractGlobalWallet();
+  const { user, authenticated, logout } = useLoginWithAbstract();
   // If the user is not authenticated, redirect them back to the landing page
   useEffect(() => {
     if (ready && !authenticated) {

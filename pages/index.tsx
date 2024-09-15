@@ -1,12 +1,12 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
-import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
+import { useLoginWithAbstract } from "../hooks/useLoginWithAbstract";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const {ready, authenticated, loginWithAbstract} = useAbstractGlobalWallet();
+  const {ready, authenticated, login} = useLoginWithAbstract();
 
   useEffect(() => {
     if (ready && authenticated) {
@@ -33,7 +33,7 @@ export default function LoginPage() {
                 src="/images/circle.svg"
               />
             </div>
-            <Button onClick={() => loginWithAbstract()} disabled={!ready || authenticated}>
+            <Button onClick={() => login()} disabled={!ready || authenticated}>
               Login with Abstract
               <svg fill="none" viewBox="0 0 14 13" height="15">
                 <path
