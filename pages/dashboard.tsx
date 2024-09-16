@@ -13,8 +13,8 @@ import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
-import { useAbstractGlobalWallet } from "../hooks/AbstractWalletProvider";
-import { useLoginWithAbstract } from "../hooks/useLoginWithAbstract";
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react"
+import { useAbstractGlobalWallet } from "@abstract-foundation/agw-react"
 
 export default function DashboardPage() {
   const router = useRouter();
