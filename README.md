@@ -21,7 +21,7 @@ git clone https://github.com/<your-github-handle>/permissionless-example
 
 2. Install the necessary dependencies (including [Privy](https://www.npmjs.com/package/@privy-io/react-auth) and [Permissionless](https://www.npmjs.com/package/permissionless)) with `npm`.
 ```sh
-npm i 
+pnpm install 
 ```
 
 3. Initialize your environment variables by copying the `.env.example` file to an `.env.local` file. Then, in `.env.local`, paste your **Privy App ID** from the [Privy console](https://console.privy.io) and your **Pimlico Bundler and Paymaster URLs** from the [Pimlico dashboard](https://dashboard.pimlico.io/). This app uses the **Base Sepolia** testnet; you should make sure to apply the same settings to your Pimlico configuration in the dashboard. 
@@ -38,7 +38,7 @@ NEXT_PUBLIC_PIMLICO_BUNDLER_URL=<your-pimlico-bundler-url>
 
 ## Building locally
 
-In your project directory, run `npm run dev`. You can now visit http://localhost:3000 to see your app and login with Privy!
+In your project directory, run `pnpm run dev`. You can now visit http://localhost:3000 to see your app and login with Privy!
 
 
 ## Check out:
