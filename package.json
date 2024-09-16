@@ -23,7 +23,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-toastify": "^10.0.5",
-    "viem": "^2.21.1"
+    "viem": "2.21.3"
   },
   "devDependencies": {
     "@tsconfig/node16-strictest-esm": "^1.0.3",
