@@ -1,7 +1,7 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
-import { useLoginWithAbstract } from "../hooks/useLoginWithAbstract";
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react"
 
 export default function LoginPage() {
   const router = useRouter();

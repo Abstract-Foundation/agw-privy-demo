@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import Navbar from "./Navbar";
 import type { NavbarItem } from "./Navbar";
-import { useRouter } from "next/router";
+import {useRouter} from "next/router";  
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 
 type Props = {
   children?: React.ReactNode;
@@ -17,7 +17,7 @@ export default function Layout({
   appName,
   navbarItems,
 }: Props) {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useLoginWithAbstract();
   const router = useRouter();
 
   useEffect(() => {

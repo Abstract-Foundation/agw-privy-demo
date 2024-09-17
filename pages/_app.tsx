@@ -2,7 +2,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { abstractTestnet } from "viem/chains";
-import { AbstractWalletProvider } from "../hooks/AbstractWalletProvider";
+import { AbstractWalletProvider } from "@abstract-foundation/agw-react"
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -48,7 +48,6 @@ function MyApp({ Component, pageProps }: AppProps) {
         defaultChain={abstractTestnet}
         supportedChains={[abstractTestnet]}
       >
-        { /* your app content here */}
         <ToastContainer position="top-right" />
         <Component {...pageProps} />
       </AbstractWalletProvider>
