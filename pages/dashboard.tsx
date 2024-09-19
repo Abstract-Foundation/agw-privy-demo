@@ -4,7 +4,7 @@ import Head from "next/head";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  AA_FACTORY_PAYMASTER_ADDRESS
+  PAYMASTER_ADDRESS
 } from "../lib/constants";
 import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
@@ -53,7 +53,7 @@ export default function DashboardPage() {
         // chain: abstractTestnet,
         to: NFT_ADDRESS,
         data: mintData,
-        paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+        paymaster: PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
       });
 
@@ -121,7 +121,7 @@ export default function DashboardPage() {
             data: mintData,
           }
         ],
-        paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
+        paymaster: PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
       })
 
