@@ -1,11 +1,10 @@
-import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Head from "next/head";
 import { useSmartAccount } from "../hooks/SmartAccountContext";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  AA_FACTORY_PAYMASTER_ADDRESS
+  AA_FACTORY_PAYMASTER_ADDRESS,
 } from "../lib/constants";
 import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
@@ -13,25 +12,11 @@ import TestTokenABI from "../lib/TestTokenABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
-import { randomBytes } from 'crypto';
-import { useAbstractGlobalWallet } from "../hooks/useAbstractGlobalWallet";
-import { usePrivy } from "@privy-io/react-auth";
+import { randomBytes } from "crypto";
 
 export default function DashboardPage() {
-  const router = useRouter();
-  // const {generateSiweMessage, linkWithSiwe} = useLinkWithSiwe();
-  const { smartAccountAddress, smartAccountClient, eoa } = useSmartAccount();
+  const { smartAccountAddress, smartAccountClient } = useSmartAccount();
 
-  const { ready, authenticated, logout} = useAbstractGlobalWallet();
-  const { user } = usePrivy();
-  // If the user is not authenticated, redirect them back to the landing page
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push("/");
-    }
-  }, [ready, authenticated, router]);
-
-  const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
   const onMint = async () => {
@@ -118,16 +103,16 @@ export default function DashboardPage() {
           {
             to: NFT_ADDRESS,
             data: mintData,
-            value: 0n
+            value: 0n,
           },
           {
             to: NFT_ADDRESS,
             data: mintData,
-          }
+          },
         ],
         paymaster: AA_FACTORY_PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
-      })
+      });
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -174,9 +159,9 @@ export default function DashboardPage() {
     function generateRandomBytes32(): Hex {
       // Generate 32 random bytes
       const randomBuffer = randomBytes(32);
-      
+
       // Convert the buffer to a hexadecimal string and add the '0x' prefix
-      return ('0x' + randomBuffer.toString('hex')) as Hex;
+      return ("0x" + randomBuffer.toString("hex")) as Hex;
     }
 
     try {
@@ -184,11 +169,12 @@ export default function DashboardPage() {
         abi: TestTokenABI,
         chain: smartAccountClient.chain,
         account: smartAccountClient.account,
-        bytecode: "0x0000000100200190000000150000c13d000000000201001900000060022002700000000902200197000000040020008c0000001f0000413d000000000301043b0000000b033001970000000c0030009c0000001f0000c13d000000240020008c0000001f0000413d0000000002000416000000000002004b0000001f0000c13d0000000401100370000000000101043b000000000010041b0000000001000019000000220001042e0000008001000039000000400010043f0000000001000416000000000001004b0000001f0000c13d0000002001000039000001000010044300000120000004430000000a01000041000000220001042e000000000100001900000023000104300000002100000432000000220001042e000000230001043000000000000000000000000000000000000000000000000000000000ffffffff0000000200000000000000000000000000000040000001000000000000000000ffffffff0000000000000000000000000000000000000000000000000000000055241077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bb15b285040315edf518d7c864e5d2c87378a8f1c65f45218de9cd10f3f559ed",
+        bytecode:
+          "0x0000000100200190000000150000c13d000000000201001900000060022002700000000902200197000000040020008c0000001f0000413d000000000301043b0000000b033001970000000c0030009c0000001f0000c13d000000240020008c0000001f0000413d0000000002000416000000000002004b0000001f0000c13d0000000401100370000000000101043b000000000010041b0000000001000019000000220001042e0000008001000039000000400010043f0000000001000416000000000001004b0000001f0000c13d0000002001000039000001000010044300000120000004430000000a01000041000000220001042e000000000100001900000023000104300000002100000432000000220001042e000000230001043000000000000000000000000000000000000000000000000000000000ffffffff0000000200000000000000000000000000000040000001000000000000000000ffffffff0000000000000000000000000000000000000000000000000000000055241077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bb15b285040315edf518d7c864e5d2c87378a8f1c65f45218de9cd10f3f559ed",
         args: [],
         deploymentType: "create2",
         salt: generateRandomBytes32(),
-      })
+      });
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -253,59 +239,45 @@ export default function DashboardPage() {
       </Head>
 
       <main className="flex flex-col items-center min-w-screen min-h-screen px-4 sm:px-20 py-6 sm:py-10 bg-gradient-to-t from-white to-[#ecf7fd]">
-        {ready && authenticated && !isLoading ? (
-          <>
-            <ToastContainer />
-            <div className="flex flex-col z-10">
-              <Header logout={logout} />
-              <div className="flex flex-row gap-4">
-                <Cell>
-                  <CellTitle title="Actions" />
-                  <Button onClick={onMint} disabled={isLoading || isMinting}>
-                    Mint NFT
-                    <ArrowSVG />
-                  </Button>
-                  <Button onClick={onBatchMint} disabled={isLoading || isMinting}>
-                    Batch Mint NFT
-                    <ArrowSVG />
-                  </Button>
-                  <Button onClick={onDeployContract} disabled={isLoading || isMinting}>
-                    Deploy Contract
-                    <ArrowSVG />
-                  </Button>
-                  <Button onClick={onLink} disabled>
-                    Link Smart Account
-                  </Button>
-                </Cell>
-                <Cell>
-                  <CellTitle title="Addresses" />
+        <>
+          <ToastContainer />
+          <div className="flex flex-col z-10">
+            <div className="flex flex-row gap-4">
+              <Cell>
+                <CellTitle title="Actions" />
+                <Button onClick={onMint} disabled={isMinting}>
+                  Mint NFT
+                  <ArrowSVG />
+                </Button>
+                <Button onClick={onBatchMint} disabled={isMinting}>
+                  Batch Mint NFT
+                  <ArrowSVG />
+                </Button>
+                <Button onClick={onDeployContract} disabled={isMinting}>
+                  Deploy Contract
+                  <ArrowSVG />
+                </Button>
+                <Button onClick={onLink} disabled>
+                  Link Smart Account
+                </Button>
+              </Cell>
+              <Cell>
+                <CellTitle title="Addresses" />
 
-                  <p className=" font-normal text-md text-gray-900">
-                    Abstract Global Wallet Address
-                  </p>
-                  <AddressCell address={smartAccountAddress} />
-                  <p className=" font-normal text-md text-gray-900">
-                    Signer Address
-                  </p>
+                <p className=" font-normal text-md text-gray-900">
+                  Abstract Global Wallet Address
+                </p>
+                <AddressCell address={smartAccountAddress || ""} />
+                <p className=" font-normal text-md text-gray-900">
+                  Signer Address
+                </p>
 
-                  <AddressCell address={eoa?.address ?? ""} />
-                </Cell>
-              </div>
-              <LongCell>
-                <CellTitle title="User Object" />
-                <textarea
-                  value={JSON.stringify(user, null, 2)}
-                  style={{
-                    boxShadow: "0px 4px 10px 0px rgba(222, 228, 235, 0.75)",
-                  }}
-                  className="p-6 w-screen max-w-4xl rounded-2xl font-mono border-solid border-2 text-sm border-[#abe1f3a3] text-gray-800"
-                  rows={20}
-                  disabled
-                />
-              </LongCell>
+                {/* <AddressCell address={eoa?.address ?? ""} /> */}
+              </Cell>
             </div>
-          </>
-        ) : null}
+          </div>
+        </>
+
         {/* Add Dots Background */}
         <DotsBG />
       </main>
