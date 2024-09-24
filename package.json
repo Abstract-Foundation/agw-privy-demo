@@ -13,6 +13,7 @@
     "lint": "next lint && npx prettier --check \"{__tests__,components,pages,hooks,lib,styles}/**/*.{ts,tsx,js,jsx}\" && npx tsc --noEmit"
   },
   "dependencies": {
+    "@privy-io/cross-app-connect": "^0.0.3-beta-20240913012159",
     "@abstract-foundation/agw-client": "0.0.1-alpha.1",
     "@abstract-foundation/agw-react": "0.0.1-alpha.9",
     "@headlessui/react": "^1.7.19",
@@ -23,6 +24,7 @@
     "next": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^6.26.2",
     "react-toastify": "^10.0.5",
     "viem": "^2.21.8",
     "wagmi": "^2.12.12"
