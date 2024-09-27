@@ -1,10 +1,10 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
-import { abstractTestnet } from "viem/chains";
 import { AbstractWalletProvider } from "@abstract-foundation/agw-react"
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { PageWrapper } from "../components/PageWrapper";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -43,13 +43,11 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Privy x Permissionless</title>
         <meta name="description" content="Privy x Permissionless" />
       </Head>
-      <AbstractWalletProvider
-        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        defaultChain={abstractTestnet}
-        supportedChains={[abstractTestnet]}
-      >
-        <ToastContainer position="top-right" />
-        <Component {...pageProps} />
+      <AbstractWalletProvider config={{testnet: true}}>
+        <PageWrapper>
+          <ToastContainer position="top-right" />
+          <Component {...pageProps} />
+        </PageWrapper>
       </AbstractWalletProvider>
     </>
   );
