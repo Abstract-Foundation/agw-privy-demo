@@ -13,13 +13,14 @@ import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { randomBytes } from 'crypto';
-import { useLoginWithAbstract } from "@abstract-foundation/agw-react"
-import { useAccount, useWalletClient } from "wagmi";
+import { useLoginWithAbstract, useGlobalWalletSignerAccount, useAbstractClient } from "@abstract-foundation/agw-react"
+import { useAccount } from "wagmi";
 
 export default function DashboardPage() {
 
   const { address: smartAccountAddress } = useAccount();
-  const { data: smartAccountClient } = useWalletClient();
+  const { address: eoa } = useGlobalWalletSignerAccount();
+  const { data: smartAccountClient } = useAbstractClient();
   const { logout } = useLoginWithAbstract();
   
   const isLoading = !smartAccountAddress || !smartAccountClient;
@@ -215,28 +216,6 @@ export default function DashboardPage() {
     setIsMinting(false);
   };
 
-  const onLink = async () => {
-    return;
-    // // The link button is disabled if either of these are undefined
-    // if (!smartAccountClient || !smartAccountAddress) return;
-    // const chainId = `eip155:${abstractTestnet.id}`;
-
-    // const message = await generateSiweMessage({
-    //   address: smartAccountAddress,
-    //   chainId
-    // });
-
-    // const signature = await smartAccountClient.signMessage({message});
-
-    // await linkWithSiwe({
-    //   signature,
-    //   message,
-    //   chainId,
-    //   walletClientType: 'privy_smart_account',
-    //   connectorType: 'safe'
-    // });
-  };
-
   return (
     <>
       <Head>
@@ -264,9 +243,6 @@ export default function DashboardPage() {
                     Deploy Contract
                     <ArrowSVG />
                   </Button>
-                  <Button onClick={onLink} disabled>
-                    Link Smart Account
-                  </Button>
                 </Cell>
                 <Cell>
                   <CellTitle title="Addresses" />
@@ -279,7 +255,7 @@ export default function DashboardPage() {
                     Signer Address
                   </p>
 
-                  {/* <AddressCell address={eoa?.address ?? ""} /> */}
+                  <AddressCell address={eoa ?? ""} />
                 </Cell>
               </div>
               <LongCell>

@@ -4,6 +4,7 @@ import Head from "next/head";
 import { AbstractWalletProvider } from "@abstract-foundation/agw-react"
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { PageWrapper } from "../components/PageWrapper";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -43,8 +44,10 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta name="description" content="Privy x Permissionless" />
       </Head>
       <AbstractWalletProvider config={{testnet: true}}>
-        <ToastContainer position="top-right" />
-        <Component {...pageProps} />
+        <PageWrapper>
+          <ToastContainer position="top-right" />
+          <Component {...pageProps} />
+        </PageWrapper>
       </AbstractWalletProvider>
     </>
   );
