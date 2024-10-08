@@ -5,6 +5,8 @@ import { AbstractWalletProvider } from "@abstract-foundation/agw-react"
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { PageWrapper } from "../components/PageWrapper";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { abstractTestnet } from "viem/chains";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -43,12 +45,11 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Privy x Permissionless</title>
         <meta name="description" content="Privy x Permissionless" />
       </Head>
-      <AbstractWalletProvider config={{testnet: true}}>
-        <PageWrapper>
-          <ToastContainer position="top-right" />
+      <PrivyProvider appId={"cm0wxwkt300ujp9fcbp6t8jf7"} clientId={"client-WY5azjBEv6kQcneAXNsLN4PJ4HaPoqG6C6K5MwrFNeqaK"} config={{
+        supportedChains: [abstractTestnet]
+      }}>
           <Component {...pageProps} />
-        </PageWrapper>
-      </AbstractWalletProvider>
+      </PrivyProvider>
     </>
   );
 }
