@@ -1,10 +1,10 @@
-'use client'
+"use client";
 import React, { useState } from "react";
 import Head from "next/head";
 import {
   ABS_SEPOLIA_SCAN_URL,
   NFT_ADDRESS,
-  PAYMASTER_ADDRESS
+  PAYMASTER_ADDRESS,
 } from "../lib/constants";
 import { encodeFunctionData, Hex } from "viem";
 import ABI from "../lib/nftABI.json";
@@ -12,17 +12,24 @@ import TestTokenABI from "../lib/TestTokenABI.json";
 import { ToastContainer, toast } from "react-toastify";
 import { Alert } from "../components/AlertWithLink";
 import { getGeneralPaymasterInput } from "viem/zksync";
-import { randomBytes } from 'crypto';
-import { useLoginWithAbstract, useGlobalWalletSignerAccount, useAbstractClient } from "@abstract-foundation/agw-react"
+import { randomBytes } from "crypto";
+import {
+  useLoginWithAbstract,
+  useGlobalWalletSignerAccount,
+  useAbstractClient,
+} from "@abstract-foundation/agw-react";
 import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 export default function DashboardPage() {
-
   const { address: smartAccountAddress } = useAccount();
   const { address: eoa } = useGlobalWalletSignerAccount();
   const { data: smartAccountClient } = useAbstractClient();
   const { logout } = useLoginWithAbstract();
-  
+  const { user, linkTwitter, linkDiscord, unlinkTwitter, unlinkDiscord } =
+    usePrivy();
+
   const isLoading = !smartAccountAddress || !smartAccountClient;
   const [isMinting, setIsMinting] = useState(false);
 
@@ -105,21 +112,21 @@ export default function DashboardPage() {
         innerInput: "0x",
       });
 
-      const transactionHash = await (smartAccountClient as any).sendTransactionBatch({
+      const transactionHash = await smartAccountClient.sendTransactionBatch({
         calls: [
           {
             to: NFT_ADDRESS,
             data: mintData,
-            value: 0n
+            value: 0n,
           },
           {
             to: NFT_ADDRESS,
             data: mintData,
-          }
+          },
         ],
         paymaster: PAYMASTER_ADDRESS,
         paymasterInput: paymasterInput,
-      })
+      });
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -166,21 +173,22 @@ export default function DashboardPage() {
     function generateRandomBytes32(): Hex {
       // Generate 32 random bytes
       const randomBuffer = randomBytes(32);
-      
+
       // Convert the buffer to a hexadecimal string and add the '0x' prefix
-      return ('0x' + randomBuffer.toString('hex')) as Hex;
+      return ("0x" + randomBuffer.toString("hex")) as Hex;
     }
 
     try {
-      const transactionHash = await (smartAccountClient as any).deployContract({
+      const transactionHash = await smartAccountClient.deployContract({
         abi: TestTokenABI,
         chain: smartAccountClient.chain,
         account: smartAccountClient.account,
-        bytecode: "0x0000000100200190000000150000c13d000000000201001900000060022002700000000902200197000000040020008c0000001f0000413d000000000301043b0000000b033001970000000c0030009c0000001f0000c13d000000240020008c0000001f0000413d0000000002000416000000000002004b0000001f0000c13d0000000401100370000000000101043b000000000010041b0000000001000019000000220001042e0000008001000039000000400010043f0000000001000416000000000001004b0000001f0000c13d0000002001000039000001000010044300000120000004430000000a01000041000000220001042e000000000100001900000023000104300000002100000432000000220001042e000000230001043000000000000000000000000000000000000000000000000000000000ffffffff0000000200000000000000000000000000000040000001000000000000000000ffffffff0000000000000000000000000000000000000000000000000000000055241077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bb15b285040315edf518d7c864e5d2c87378a8f1c65f45218de9cd10f3f559ed",
+        bytecode:
+          "0x0000000100200190000000150000c13d000000000201001900000060022002700000000902200197000000040020008c0000001f0000413d000000000301043b0000000b033001970000000c0030009c0000001f0000c13d000000240020008c0000001f0000413d0000000002000416000000000002004b0000001f0000c13d0000000401100370000000000101043b000000000010041b0000000001000019000000220001042e0000008001000039000000400010043f0000000001000416000000000001004b0000001f0000c13d0000002001000039000001000010044300000120000004430000000a01000041000000220001042e000000000100001900000023000104300000002100000432000000220001042e000000230001043000000000000000000000000000000000000000000000000000000000ffffffff0000000200000000000000000000000000000040000001000000000000000000ffffffff0000000000000000000000000000000000000000000000000000000055241077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bb15b285040315edf518d7c864e5d2c87378a8f1c65f45218de9cd10f3f559ed",
         args: [],
         deploymentType: "create2",
         salt: generateRandomBytes32(),
-      })
+      });
 
       toast.update(toastId, {
         render: "Waiting for your transaction to be confirmed...",
@@ -223,7 +231,7 @@ export default function DashboardPage() {
       </Head>
 
       <main className="flex flex-col items-center min-w-screen min-h-screen px-4 sm:px-20 py-6 sm:py-10 bg-gradient-to-t from-white to-[#ecf7fd]">
-          {smartAccountAddress && (
+        {smartAccountAddress && (
           <>
             <ToastContainer />
             <div className="flex flex-col z-10">
@@ -235,11 +243,17 @@ export default function DashboardPage() {
                     Mint NFT
                     <ArrowSVG />
                   </Button>
-                  <Button onClick={onBatchMint} disabled={isLoading || isMinting}>
+                  <Button
+                    onClick={onBatchMint}
+                    disabled={isLoading || isMinting}
+                  >
                     Batch Mint NFT
                     <ArrowSVG />
                   </Button>
-                  <Button onClick={onDeployContract} disabled={isLoading || isMinting}>
+                  <Button
+                    onClick={onDeployContract}
+                    disabled={isLoading || isMinting}
+                  >
                     Deploy Contract
                     <ArrowSVG />
                   </Button>
@@ -257,11 +271,44 @@ export default function DashboardPage() {
 
                   <AddressCell address={eoa ?? ""} />
                 </Cell>
+                <Cell>
+                  <CellTitle title="Socials" />
+
+                  {user?.twitter ? (
+                    <Button
+                      onClick={() => unlinkTwitter(user!.twitter!.subject)}
+                      disabled={isLoading}
+                    >
+                      Twitter: {user.twitter.name}
+                      <XMarkIcon className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button onClick={linkTwitter} disabled={isLoading}>
+                      Link Twitter
+                      <ArrowSVG />
+                    </Button>
+                  )}
+
+                  {user?.discord ? (
+                    <Button
+                      onClick={() => unlinkDiscord(user!.discord!.subject)}
+                      disabled={isLoading}
+                    >
+                      Discord: {user.discord.username}
+                      <XMarkIcon className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button onClick={linkDiscord} disabled={isLoading}>
+                      Link Discord
+                      <ArrowSVG />
+                    </Button>
+                  )}
+                </Cell>
               </div>
               <LongCell>
                 <CellTitle title="User Object" />
                 <textarea
-                  value={JSON.stringify({}, null, 2)}
+                  value={JSON.stringify({ user }, null, 2)}
                   style={{
                     boxShadow: "0px 4px 10px 0px rgba(222, 228, 235, 0.75)",
                   }}
@@ -288,6 +335,7 @@ function AddressCell({ address }: { address: string }) {
       style={{ boxShadow: "0px 0.79px 2.37px 0px rgba(0, 0, 0, 0.29)" }}
       className="py-1.5 px-4 rounded-full font-medium text-[#93969a] bg-gradient-primary"
       href={`${ABS_SEPOLIA_SCAN_URL}/address/${formattedAddress}`}
+      rel="noreferrer"
     >
       {formattedAddress.slice(0, 7)}...
       {formattedAddress.slice(-5)}
