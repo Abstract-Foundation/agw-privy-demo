@@ -10,7 +10,7 @@ export default function FormattedDate({ secsSinceEpoch }: Props) {
       year: "numeric",
       month: "short",
       day: "numeric",
-    }
+    },
   );
 
   return <p>{formattedDate}</p>;

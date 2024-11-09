@@ -15,7 +15,6 @@ export default function Layout({
   appName,
   navbarItems,
 }: Props) {
-
   return (
     <>
       <Navbar accountId={accountId} appName={appName} items={navbarItems} />

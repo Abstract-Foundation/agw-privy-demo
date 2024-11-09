@@ -1,9 +1,8 @@
 import Head from "next/head";
 import React from "react";
-import { useLoginWithAbstract } from "@abstract-foundation/agw-react"
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 
 export default function LoginPage() {
-  
   const { login } = useLoginWithAbstract();
 
   return (
